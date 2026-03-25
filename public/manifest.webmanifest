@@ -1,0 +1,16 @@
+{
+  "name": "ArtAR Busan Admin CMS",
+  "short_name": "ArtAR Admin",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+
