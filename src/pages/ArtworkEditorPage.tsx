@@ -1,25 +1,26 @@
-import React, { useId, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import React, { useEffect, useId, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEventContext } from "../context/EventContext";
 import { LanguageTabs, type LanguageKey } from "../components/LanguageTabs";
 import { FileDropzone } from "../components/FileDropzone";
+import {
+  createEmptyLocalizedText,
+  fileToDataUrl,
+  generateArtworkId,
+  loadArtworksForEvent,
+  nowIso,
+  saveArtworksForEvent,
+  type ArtworkRecord,
+  type LocalizedText,
+} from "../lib/localArtworksStore";
 
 type Mode = "create" | "edit";
 
-type LocalizedText = Record<LanguageKey, { title: string; description: string }>;
-
-function createEmptyLocalizedText(): LocalizedText {
-  return {
-    ko: { title: "", description: "" },
-    en: { title: "", description: "" },
-    ja: { title: "", description: "" },
-    zh: { title: "", description: "" },
-  };
-}
-
 export function ArtworkEditorPage({ mode }: { mode: Mode }) {
   const { selectedEvent } = useEventContext();
+  const eventId = selectedEvent?.id ?? "";
   const { artworkId } = useParams();
+  const navigate = useNavigate();
   const titleId = useId();
 
   const pageTitle = useMemo(() => {
@@ -37,29 +38,93 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
 
   const [artworkImage, setArtworkImage] = useState<File | null>(null);
   const [markerImages, setMarkerImages] = useState<File[]>([]);
+  const [existingThumbnail, setExistingThumbnail] = useState<string | null>(null);
+  const [existingMarkers, setExistingMarkers] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (mode !== "edit") return;
+    if (!eventId || !artworkId) return;
+    const loaded = loadArtworksForEvent(eventId);
+    const item = loaded.find((a) => a.id === artworkId);
+    if (!item) return;
+    setActiveLang("ko");
+    setLocalized(item.localized);
+    setX(item.spatial.x === null ? "" : String(item.spatial.x));
+    setY(item.spatial.y === null ? "" : String(item.spatial.y));
+    setZ(item.spatial.z === null ? "" : String(item.spatial.z));
+    setTriggerRadiusMeters(item.spatial.triggerRadiusMeters ?? 10);
+    setExistingThumbnail(item.media.thumbnailDataUrl);
+    setExistingMarkers(item.media.markerImages?.length ?? 0);
+  }, [artworkId, eventId, mode]);
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      mode,
-      artworkId: mode === "edit" ? artworkId : undefined,
-      eventId: selectedEvent?.id,
-      localized,
-      spatial: {
-        x: x === "" ? null : Number(x),
-        y: y === "" ? null : Number(y),
-        z: z === "" ? null : Number(z),
-      },
-      triggerRadiusMeters,
-      files: {
-        artworkImage: artworkImage ? { name: artworkImage.name, size: artworkImage.size } : null,
-        markerImages: markerImages.map((f) => ({ name: f.name, size: f.size })),
-      },
-    };
-    // placeholder for backend integration
-    // eslint-disable-next-line no-console
-    console.log("[ArtworkEditor] submit", payload);
-    window.alert("저장 동작은 아직 API 연동 전입니다. 콘솔 로그를 확인해 주세요.");
+    if (!eventId) {
+      window.alert("먼저 상단에서 행사를 선택해 주세요.");
+      return;
+    }
+    if (!localized.ko.title.trim()) {
+      window.alert("작품명(KR)을 입력해 주세요.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const isEditing = mode === "edit";
+      const loaded = loadArtworksForEvent(eventId);
+      const existing = isEditing ? loaded.find((a) => a.id === artworkId) : undefined;
+      if (isEditing && !existing) {
+        window.alert("수정 대상이 존재하지 않습니다. 목록으로 돌아갑니다.");
+        navigate("/locations");
+        return;
+      }
+
+      const id = isEditing ? (artworkId as string) : generateArtworkId();
+      const createdAt = isEditing && existing ? existing.createdAt : nowIso();
+
+      const thumbnailDataUrl =
+        artworkImage && artworkImage.type.startsWith("image/")
+          ? await fileToDataUrl(artworkImage)
+          : null;
+
+      const record: ArtworkRecord = {
+        id,
+        eventId,
+        status: isEditing && existing ? existing.status : "draft",
+        localized,
+        spatial: {
+          x: x.trim() === "" ? null : Number(x),
+          y: y.trim() === "" ? null : Number(y),
+          z: z.trim() === "" ? null : Number(z),
+          triggerRadiusMeters,
+        },
+        media: {
+          thumbnailDataUrl: thumbnailDataUrl ?? (isEditing && existing ? existing.media.thumbnailDataUrl : null),
+          artworkImageName: artworkImage?.name ?? (isEditing && existing ? existing.media.artworkImageName : null),
+          markerImages:
+            markerImages.length > 0
+              ? markerImages.map((f) => ({ fileName: f.name, size: f.size }))
+              : isEditing && existing
+                ? existing.media.markerImages
+                : null,
+        },
+        createdAt,
+        updatedAt: nowIso(),
+      };
+
+      const next = isEditing ? loaded.map((a) => (a.id === id ? record : a)) : [record, ...loaded];
+      saveArtworksForEvent(eventId, next);
+
+      // eslint-disable-next-line no-console
+      console.log("[ArtworkEditor] save payload", record);
+      window.alert("저장 완료(로컬).");
+      navigate("/locations");
+    } catch {
+      window.alert("저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const setTitle = (lang: LanguageKey, value: string) => {
@@ -102,6 +167,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
           <button
             type="submit"
             form={titleId}
+            disabled={isSaving}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
           >
             저장
@@ -250,6 +316,16 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <div>
               <div className="mb-2 text-xs font-medium text-zinc-700">작품 이미지</div>
+              {mode === "edit" && existingThumbnail ? (
+                <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  <span>기존 이미지:</span>
+                  <img
+                    src={existingThumbnail}
+                    alt="기존 작품 이미지"
+                    className="h-8 w-8 rounded-md border border-zinc-200 object-cover dark:border-zinc-800"
+                  />
+                </div>
+              ) : null}
               <FileDropzone
                 label="이미지를 드래그앤드롭 또는 클릭"
                 accept="image/*"
@@ -260,6 +336,11 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
             </div>
             <div>
               <div className="mb-2 text-xs font-medium text-zinc-700">AR 마커용 이미지 (학습 데이터셋)</div>
+              {mode === "edit" && existingMarkers > 0 ? (
+                <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  기존 마커 이미지 {existingMarkers}장
+                </div>
+              ) : null}
               <FileDropzone
                 label="여러 장 업로드 가능 (권장)"
                 accept="image/*"

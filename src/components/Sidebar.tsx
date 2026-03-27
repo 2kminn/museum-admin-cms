@@ -8,7 +8,7 @@ type Props = {
 const navItems = [
   { to: "/dashboard", label: "대시보드", icon: LayoutDashboard },
   { to: "/events", label: "행사 관리", icon: CalendarDays },
-  { to: "/locations", label: "장소 및 작품 설정", icon: MapPinned },
+  { to: "/locations", label: "작품 설정", icon: MapPinned },
   { to: "/analytics", label: "데이터 통계 (Analytics)", icon: BarChart3 },
   { to: "/theme", label: "테마 편집기", icon: Palette },
 ] as const;
