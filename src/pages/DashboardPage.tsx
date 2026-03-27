@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Cell,
   Legend,
@@ -7,6 +7,7 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
+  Sector,
   Tooltip,
   XAxis,
   YAxis,
@@ -35,6 +36,7 @@ const PALETTE = ["#0A0A0A", "#2563EB", "#16A34A", "#DC2626", "#7C3AED", "#F59E0B
 
 export function DashboardPage() {
   const { selectedEvent } = useEventContext();
+  const [activeLanguageIndex, setActiveLanguageIndex] = useState<number | null>(null);
 
   // Mock data (placeholder until API 연결)
   const daily: DailyVisitors[] = useMemo(
@@ -69,6 +71,23 @@ export function DashboardPage() {
     const kr = languages.find((l) => l.name === "한국어")?.value ?? 0;
     return Math.max(0, Math.min(1, 1 - kr / total));
   }, [languages]);
+
+  const renderActiveLanguageSlice = useCallback((props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    return (
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={Math.max(0, innerRadius - 2)}
+        outerRadius={outerRadius * 1.05}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        stroke="#ffffff"
+        strokeWidth={2}
+      />
+    );
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -154,7 +173,7 @@ export function DashboardPage() {
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-[220px_1fr] md:items-center">
-            <div className="h-[240px]">
+            <div className="chart-no-focus h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -164,12 +183,19 @@ export function DashboardPage() {
                     innerRadius={58}
                     outerRadius={82}
                     paddingAngle={2}
+                    activeIndex={activeLanguageIndex ?? undefined}
+                    activeShape={renderActiveLanguageSlice}
+                    onMouseEnter={(_, index) => setActiveLanguageIndex(index)}
+                    onClick={(_, index) =>
+                      setActiveLanguageIndex((current) => (current === index ? null : index))
+                    }
+                    style={{ outline: "none" }}
                   >
                     {languages.map((_, idx) => (
                       <Cell key={idx} fill={PALETTE[idx % PALETTE.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value}%`, "비중"]} />
+                  <Tooltip cursor={false} formatter={(value) => [`${value}%`, "비중"]} />
                   <Legend
                     layout="horizontal"
                     verticalAlign="bottom"
@@ -212,4 +238,3 @@ export function DashboardPage() {
     </div>
   );
 }
-

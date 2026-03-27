@@ -14,7 +14,7 @@ export function App() {
       <EventProvider>
         <Routes>
           <Route element={<AppShell />}>
-            <Route path="/" element={<Navigate to="/events" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/events" element={<EventManagementPage />} />
             <Route path="/locations" element={<LocationsArtworksPage />} />
