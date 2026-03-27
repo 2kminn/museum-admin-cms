@@ -74,17 +74,20 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-zinc-900">{pageTitle}</h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{pageTitle}</h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
             현재 행사:{" "}
-            <span className="font-medium text-zinc-900">{selectedEvent?.name ?? "-"}</span>
+            <span className="font-medium text-zinc-900 dark:text-zinc-100">
+              {selectedEvent?.name ?? "-"}
+            </span>
           </p>
           {mode === "edit" ? (
-            <p className="mt-1 text-xs text-zinc-500">
-              편집 대상 ID: <span className="font-medium text-zinc-700">{artworkId ?? "-"}</span>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              편집 대상 ID:{" "}
+              <span className="font-medium text-zinc-700 dark:text-zinc-200">{artworkId ?? "-"}</span>
             </p>
           ) : null}
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             QR 대신 COLMAP 기반 3D 좌표 인식(X/Y/Z)과 반경(Trigger Radius)로 노출 지점을 정의합니다.
           </p>
         </div>
@@ -92,14 +95,14 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
         <div className="flex items-center gap-2">
           <Link
             to="/locations"
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
           >
             뒤로
           </Link>
           <button
             type="submit"
             form={titleId}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
           >
             저장
           </button>
@@ -107,9 +110,11 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       </div>
 
       <form id={titleId} onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
-        <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-zinc-900">기본 정보 (다국어)</div>
+            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              기본 정보 (다국어)
+            </div>
             <LanguageTabs value={activeLang} onChange={setActiveLang} />
           </div>
 
@@ -122,7 +127,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                 id={`title-${activeLang}`}
                 value={localized[activeLang].title}
                 onChange={(e) => setTitle(activeLang, e.target.value)}
-                className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none"
+                className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                 placeholder="예) 광안리 밤바다의 빛"
               />
             </div>
@@ -138,7 +143,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                 id={`description-${activeLang}`}
                 value={localized[activeLang].description}
                 onChange={(e) => setDescription(activeLang, e.target.value)}
-                className="mt-1 min-h-[120px] w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:outline-none"
+                className="mt-1 min-h-[120px] w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                 placeholder="작품 소개, 운영 안내, 관람 팁 등을 입력하세요."
               />
             </div>
@@ -146,9 +151,11 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-zinc-900">공간 좌표 (Spatial Data)</div>
-            <div className="mt-1 text-xs text-zinc-500">COLMAP 추출 좌표값을 입력합니다.</div>
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+              공간 좌표 (Spatial Data)
+            </div>
+            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">COLMAP 추출 좌표값을 입력합니다.</div>
 
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div>
@@ -162,7 +169,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                   step="any"
                   value={x}
                   onChange={(e) => setX(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none"
+                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                   placeholder="0.0"
                 />
               </div>
@@ -177,7 +184,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                   step="any"
                   value={y}
                   onChange={(e) => setY(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none"
+                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                   placeholder="0.0"
                 />
               </div>
@@ -192,20 +199,24 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                   step="any"
                   value={z}
                   onChange={(e) => setZ(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none"
+                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                   placeholder="0.0"
                 />
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="text-sm font-semibold text-zinc-900">인식 반경 (Trigger Radius)</div>
-                <div className="mt-1 text-xs text-zinc-500">좌표 근처 몇 m에서 콘텐츠를 띄울지 설정합니다.</div>
+                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                  인식 반경 (Trigger Radius)
+                </div>
+                <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  좌표 근처 몇 m에서 콘텐츠를 띄울지 설정합니다.
+                </div>
               </div>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-900">
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
                 {triggerRadiusMeters}m
               </div>
             </div>
@@ -221,7 +232,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                 className="w-full accent-zinc-900"
                 aria-label="Trigger Radius meters"
               />
-              <div className="mt-2 flex justify-between text-[11px] text-zinc-500">
+              <div className="mt-2 flex justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
                 <span>1m</span>
                 <span>25m</span>
                 <span>50m</span>
@@ -230,9 +241,9 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
           </div>
         </section>
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm lg:col-span-2">
-          <div className="text-sm font-semibold text-zinc-900">미디어 업로드</div>
-          <div className="mt-1 text-xs text-zinc-500">
+        <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
+          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">미디어 업로드</div>
+          <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             작품 이미지 1장과 AR 마커 학습용 이미지(데이터셋)를 업로드합니다.
           </div>
 

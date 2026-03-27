@@ -37,16 +37,16 @@ export function MobileSidebar({ open, onClose, children }: Props) {
         role="dialog"
         aria-modal="true"
         className={[
-          "absolute inset-y-0 left-0 w-[18rem] max-w-[85vw] bg-white shadow-soft transition-transform",
+          "absolute inset-y-0 left-0 w-[18rem] max-w-[85vw] bg-white shadow-soft transition-transform dark:bg-zinc-950",
           open ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-          <div className="text-sm font-semibold text-zinc-900">메뉴</div>
+        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">메뉴</div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
             aria-label="메뉴 닫기"
           >
             <X className="h-5 w-5" />
@@ -57,4 +57,3 @@ export function MobileSidebar({ open, onClose, children }: Props) {
     </div>
   );
 }
-

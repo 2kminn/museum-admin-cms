@@ -15,10 +15,12 @@ const navItems = [
 
 export function Sidebar({ onNavigate }: Props) {
   return (
-    <div className="flex h-full flex-col border-r border-zinc-200 bg-white">
+    <div className="flex h-full flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       <div className="px-4 py-5">
-        <div className="text-sm font-semibold text-zinc-900">ArtAR Busan</div>
-        <div className="text-xs text-zinc-500">Public Media Art · AR Template Platform</div>
+        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">ArtAR Busan</div>
+        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+          공공 미디어아트 · AR 템플릿 플랫폼
+        </div>
       </div>
 
       <nav className="px-2 pb-4">
@@ -34,7 +36,7 @@ export function Sidebar({ onNavigate }: Props) {
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
                   isActive
                     ? "bg-zinc-900 text-white"
-                    : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900",
+                    : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
                 ].join(" ")
               }
             >
@@ -43,7 +45,9 @@ export function Sidebar({ onNavigate }: Props) {
                   <Icon
                     className={[
                       "h-5 w-5",
-                      isActive ? "text-white" : "text-zinc-500 group-hover:text-zinc-700",
+                      isActive
+                        ? "text-white"
+                        : "text-zinc-500 group-hover:text-zinc-700 dark:text-zinc-400 dark:group-hover:text-zinc-200",
                     ].join(" ")}
                   />
                   <span className="truncate">{item.label}</span>
@@ -54,8 +58,8 @@ export function Sidebar({ onNavigate }: Props) {
         })}
       </nav>
 
-      <div className="mt-auto border-t border-zinc-200 px-4 py-4">
-        <div className="text-xs text-zinc-500">v0.1 · Admin CMS</div>
+      <div className="mt-auto border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
+        <div className="text-xs text-zinc-500 dark:text-zinc-400">v0.1 · Admin CMS</div>
       </div>
     </div>
   );

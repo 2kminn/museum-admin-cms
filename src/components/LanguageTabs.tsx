@@ -17,7 +17,7 @@ export function LanguageTabs({
   onChange: (lang: LanguageKey) => void;
 }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-zinc-200 bg-white p-1 shadow-sm">
+    <div className="inline-flex items-center rounded-lg border border-zinc-200 bg-white p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       {languages.map((lang) => {
         const active = lang.key === value;
         return (
@@ -27,7 +27,9 @@ export function LanguageTabs({
             onClick={() => onChange(lang.key)}
             className={[
               "group inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold",
-              active ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100",
+              active
+                ? "bg-zinc-900 text-white"
+                : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900",
             ].join(" ")}
             aria-pressed={active}
             aria-label={lang.sub}
@@ -39,4 +41,3 @@ export function LanguageTabs({
     </div>
   );
 }
-

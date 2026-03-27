@@ -1,35 +1,52 @@
-import { Menu } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { useEventContext } from "../context/EventContext";
+import { useTheme } from "../context/ThemeContext";
 
 export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const { events, selectedEventId, setSelectedEventId } = useEventContext();
+  const { mode, toggleMode } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 md:px-6">
         <button
           type="button"
           onClick={onOpenMobileNav}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 md:hidden"
           aria-label="메뉴 열기"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-5 text-zinc-900">ArtAR Busan</div>
-          <div className="text-xs text-zinc-500">관리자 CMS</div>
+          <div className="text-sm font-semibold leading-5 text-zinc-900 dark:text-zinc-100">
+            ArtAR Busan
+          </div>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400">관리자 CMS</div>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <label className="hidden text-xs font-medium text-zinc-600 md:inline" htmlFor="event-selector">
+          <button
+            type="button"
+            onClick={toggleMode}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+            aria-label={mode === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+            title={mode === "dark" ? "라이트 모드" : "다크 모드"}
+          >
+            {mode === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
+
+          <label
+            className="hidden text-xs font-medium text-zinc-600 dark:text-zinc-300 md:inline"
+            htmlFor="event-selector"
+          >
             행사 선택
           </label>
           <select
             id="event-selector"
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="h-10 max-w-[16rem] rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm hover:bg-zinc-50 focus:outline-none md:max-w-[22rem]"
+            className="h-10 max-w-[16rem] rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm hover:bg-zinc-50 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 md:max-w-[22rem]"
             aria-label="현재 행사 선택"
           >
             {events.map((evt) => (
@@ -43,4 +60,3 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
     </header>
   );
 }
-

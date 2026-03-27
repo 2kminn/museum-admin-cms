@@ -8,7 +8,7 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-full md:grid md:grid-cols-[16rem_1fr]">
+    <div className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 md:grid md:grid-cols-[16rem_1fr]">
       <aside className="hidden md:sticky md:top-0 md:block md:h-screen">
         <Sidebar />
       </aside>
