@@ -1,11 +1,44 @@
 /* eslint-disable no-restricted-globals */
-const CACHE_NAME = "artar-admin-shell-v1";
+const CACHE_NAME = "artar-admin-shell-v2";
+const PRECACHE_URLS = ["/manifest.webmanifest", "/icons/icon.svg"];
+
+function isNavigationRequest(req) {
+  if (req.mode === "navigate") return true;
+  const accept = req.headers.get("accept") || "";
+  return accept.includes("text/html");
+}
+
+async function cacheFirst(req) {
+  const cached = await caches.match(req);
+  if (cached) return cached;
+
+  const res = await fetch(req);
+  if (res.ok) {
+    const cache = await caches.open(CACHE_NAME);
+    cache.put(req, res.clone()).catch(() => {});
+  }
+  return res;
+}
+
+async function staleWhileRevalidate(req) {
+  const cached = await caches.match(req);
+  const fetchPromise = fetch(req)
+    .then((res) => {
+      if (res.ok) {
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, res.clone())).catch(() => {});
+      }
+      return res;
+    })
+    .catch(() => undefined);
+
+  return cached || (await fetchPromise);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(["/", "/manifest.webmanifest", "/icons/icon.svg"]))
+      .then((cache) => cache.addAll(PRECACHE_URLS))
       .then(() => self.skipWaiting()),
   );
 });
@@ -28,17 +61,22 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  if (isNavigationRequest(req)) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
+
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match("/"));
-    }),
+    staleWhileRevalidate(req).then((res) => res || fetch(req)),
   );
 });
-
