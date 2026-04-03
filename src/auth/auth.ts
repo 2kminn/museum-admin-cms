@@ -179,6 +179,10 @@ export function listPendingMuseums(): AuthUser[] {
   return loadUsers().filter((u) => u.role === "MUSEUM" && u.museumStatus === "PENDING_MUSEUM");
 }
 
+export function listApprovedMuseums(): AuthUser[] {
+  return loadUsers().filter((u) => u.role === "MUSEUM" && u.museumStatus === "APPROVED_MUSEUM");
+}
+
 export function setMuseumStatus(userId: string, status: MuseumStatus): AuthUser {
   const users = loadUsers();
   const idx = users.findIndex((u) => u.id === userId);
@@ -187,6 +191,33 @@ export function setMuseumStatus(userId: string, status: MuseumStatus): AuthUser 
   if (target.role !== "MUSEUM") throw new Error("NOT_MUSEUM");
 
   const next: AuthUser = { ...target, museumStatus: status, updatedAt: nowIso() };
+  const updated = users.slice();
+  updated[idx] = next;
+  saveUsers(updated);
+  return next;
+}
+
+export function updateMuseumProfile(input: {
+  userId: string;
+  museumName: string;
+  contact: string;
+  proofFileName: string | null;
+}): AuthUser {
+  const users = loadUsers();
+  const idx = users.findIndex((u) => u.id === input.userId);
+  if (idx < 0) throw new Error("USER_NOT_FOUND");
+  const target = users[idx];
+  if (target.role !== "MUSEUM") throw new Error("NOT_MUSEUM");
+  if (!input.museumName.trim()) throw new Error("MUSEUM_NAME_REQUIRED");
+  if (!input.contact.trim()) throw new Error("CONTACT_REQUIRED");
+
+  const next: AuthUser = {
+    ...target,
+    museumName: input.museumName.trim(),
+    contact: input.contact.trim(),
+    proofFileName: input.proofFileName,
+    updatedAt: nowIso(),
+  };
   const updated = users.slice();
   updated[idx] = next;
   saveUsers(updated);
@@ -220,4 +251,13 @@ export function resubmitMuseumApplication(input: {
   updated[idx] = next;
   saveUsers(updated);
   return next;
+}
+
+export function deleteUser(userId: string) {
+  const users = loadUsers();
+  const next = users.filter((u) => u.id !== userId);
+  if (next.length === users.length) throw new Error("USER_NOT_FOUND");
+  saveUsers(next);
+  const session = loadSession();
+  if (session?.userId === userId) clearSession();
 }

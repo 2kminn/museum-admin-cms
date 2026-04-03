@@ -12,10 +12,10 @@ type Props = {
 
 export function ConfirmModal({
   open,
-  title = "Confirm",
+  title = "확인",
   message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  confirmText = "확인",
+  cancelText = "취소",
   onCancel,
   onConfirm,
 }: Props) {
@@ -97,4 +97,3 @@ export function ConfirmModal({
     </div>
   );
 }
-

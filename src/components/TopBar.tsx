@@ -17,10 +17,10 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
     <>
       <ConfirmModal
         open={logoutOpen}
-        title="Log out"
-        message="Are you sure you want to log out?"
-        cancelText="Cancel"
-        confirmText="Confirm"
+        title="로그아웃"
+        message="로그아웃 하시겠습니까?"
+        cancelText="취소"
+        confirmText="확인"
         onCancel={() => setLogoutOpen(false)}
         onConfirm={() => {
           setLogoutOpen(false);
