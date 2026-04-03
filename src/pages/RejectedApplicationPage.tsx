@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { FileUp, LogOut, RotateCcw, ShieldAlert } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { formatKoreanMobile, isValidKoreanMobileDigits, toKoreanMobileDigits } from "../lib/authInput";
 
 function inputBaseClasses() {
   return "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100";
@@ -20,8 +21,9 @@ export function RejectedApplicationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [museumName, setMuseumName] = useState("");
-  const [contact, setContact] = useState("");
+  const [contactDigits, setContactDigits] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [contactTouched, setContactTouched] = useState(false);
 
   useEffect(() => {
     const onStorage = () => refresh();
@@ -32,7 +34,7 @@ export function RejectedApplicationPage() {
   useEffect(() => {
     if (!user) return;
     setMuseumName(user.museumName ?? "");
-    setContact(user.contact ?? "");
+    setContactDigits(toKoreanMobileDigits(user.contact ?? ""));
   }, [user]);
 
   const proofLabel = useMemo(() => {
@@ -51,11 +53,13 @@ export function RejectedApplicationPage() {
   const onResubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setContactTouched(true);
+    if (!isValidKoreanMobileDigits(contactDigits)) return;
     setIsSubmitting(true);
     try {
       await resubmitApplication({
         museumName,
-        contact,
+        contact: formatKoreanMobile(contactDigits),
         proofFileName: proofFile?.name ?? user.proofFileName ?? null,
       });
       navigate("/waiting", { replace: true });
@@ -129,11 +133,28 @@ export function RejectedApplicationPage() {
                   </label>
                   <input
                     id="contact"
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
+                    value={formatKoreanMobile(contactDigits)}
+                    onChange={(e) => {
+                      if (!contactTouched) setContactTouched(true);
+                      setContactDigits(toKoreanMobileDigits(e.target.value));
+                    }}
+                    onBlur={() => setContactTouched(true)}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey || e.altKey) return;
+                      if (e.key.length !== 1) return;
+                      if (!/^\d$/.test(e.key)) e.preventDefault();
+                    }}
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    maxLength={13}
                     className={inputBaseClasses()}
                     placeholder="010-0000-0000"
                   />
+                  {contactTouched && !isValidKoreanMobileDigits(contactDigits) ? (
+                    <div className="mt-1 text-xs text-rose-600 dark:text-rose-300">
+                      휴대폰 번호 형식이 올바르지 않습니다. 예) 010-0000-0000
+                    </div>
+                  ) : null}
                 </div>
 
                 <div>
@@ -190,4 +211,3 @@ export function RejectedApplicationPage() {
     </div>
   );
 }
-

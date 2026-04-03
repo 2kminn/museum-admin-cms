@@ -2,6 +2,12 @@ import React, { useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Building2, FileUp, Landmark, Lock, LogIn, Mail, Phone, UserPlus } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import {
+  formatKoreanMobile,
+  isValidEmail,
+  isValidKoreanMobileDigits,
+  toKoreanMobileDigits,
+} from "../lib/authInput";
 
 type Tab = "login" | "register";
 
@@ -24,13 +30,30 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
 
   const [museumName, setMuseumName] = useState("");
-  const [contact, setContact] = useState("");
+  const [contactDigits, setContactDigits] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
+
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [contactTouched, setContactTouched] = useState(false);
 
   const redirectPath = useMemo(() => {
     const from = (location.state as { from?: string } | null)?.from;
     return typeof from === "string" && from.startsWith("/") ? from : null;
   }, [location.state]);
+
+  const emailError = useMemo(() => {
+    if (!emailTouched) return null;
+    if (!email.trim()) return "이메일을 입력해 주세요.";
+    if (!isValidEmail(email)) return "이메일 형식이 올바르지 않습니다. 예) example@domain.com";
+    return null;
+  }, [email, emailTouched]);
+
+  const contactError = useMemo(() => {
+    if (!contactTouched) return null;
+    if (!contactDigits.trim()) return "연락처를 입력해 주세요.";
+    if (!isValidKoreanMobileDigits(contactDigits)) return "휴대폰 번호 형식이 올바르지 않습니다. 예) 010-0000-0000";
+    return null;
+  }, [contactDigits, contactTouched]);
 
   if (!isReady) return null;
   if (user) {
@@ -44,6 +67,8 @@ export function LoginPage() {
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setEmailTouched(true);
+    if (!isValidEmail(email)) return;
     try {
       const user = await login(email, password);
       if (user.role === "SUPER_ADMIN") {
@@ -71,12 +96,15 @@ export function LoginPage() {
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setEmailTouched(true);
+    setContactTouched(true);
+    if (!isValidEmail(email) || !isValidKoreanMobileDigits(contactDigits)) return;
     try {
       await registerMuseum({
         email,
         password,
         museumName,
-        contact,
+        contact: formatKoreanMobile(contactDigits),
         proofFileName: proofFile?.name ?? null,
       });
       navigate("/waiting", { replace: true });
@@ -187,12 +215,19 @@ export function LoginPage() {
                       <input
                         id="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          if (!emailTouched) setEmailTouched(true);
+                          setEmail(e.target.value);
+                        }}
+                        onBlur={() => setEmailTouched(true)}
                         className={[inputBaseClasses(), "pl-10"].join(" ")}
                         placeholder="you@museum.com"
                         autoComplete="email"
                       />
                     </div>
+                    {emailError ? (
+                      <div className="mt-1 text-xs text-rose-600 dark:text-rose-300">{emailError}</div>
+                    ) : null}
                   </div>
 
                   <div>
@@ -245,12 +280,19 @@ export function LoginPage() {
                         <input
                           id="reg-email"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={(e) => {
+                            if (!emailTouched) setEmailTouched(true);
+                            setEmail(e.target.value);
+                          }}
+                          onBlur={() => setEmailTouched(true)}
                           className={[inputBaseClasses(), "pl-10"].join(" ")}
                           placeholder="you@museum.com"
                           autoComplete="email"
                         />
                       </div>
+                      {emailError ? (
+                        <div className="mt-1 text-xs text-rose-600 dark:text-rose-300">{emailError}</div>
+                      ) : null}
                     </div>
 
                     <div className="sm:col-span-2">
@@ -292,12 +334,27 @@ export function LoginPage() {
                         <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                         <input
                           id="contact"
-                          value={contact}
-                          onChange={(e) => setContact(e.target.value)}
+                          value={formatKoreanMobile(contactDigits)}
+                          onChange={(e) => {
+                            if (!contactTouched) setContactTouched(true);
+                            setContactDigits(toKoreanMobileDigits(e.target.value));
+                          }}
+                          onBlur={() => setContactTouched(true)}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey || e.altKey) return;
+                            if (e.key.length !== 1) return;
+                            if (!/^\d$/.test(e.key)) e.preventDefault();
+                          }}
+                          inputMode="numeric"
+                          autoComplete="tel"
+                          maxLength={13}
                           className={[inputBaseClasses(), "pl-10"].join(" ")}
                           placeholder="010-0000-0000"
                         />
                       </div>
+                      {contactError ? (
+                        <div className="mt-1 text-xs text-rose-600 dark:text-rose-300">{contactError}</div>
+                      ) : null}
                     </div>
 
                     <div className="sm:col-span-2">
