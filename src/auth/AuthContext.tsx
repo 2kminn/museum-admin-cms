@@ -3,10 +3,12 @@ import type { AuthUser } from "./auth";
 import {
   ensureSeededUsers,
   getCurrentUser,
+  loadUsers,
   login as loginFn,
   logout as logoutFn,
   registerMuseum,
   resubmitMuseumApplication,
+  saveSession,
 } from "./auth";
 
 type AuthContextValue = {
@@ -27,6 +29,7 @@ type AuthContextValue = {
     contact: string;
     proofFileName: string | null;
   }) => Promise<AuthUser>;
+  devImpersonate: (email: string) => Promise<AuthUser>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -79,9 +82,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const devImpersonate = useCallback(async (emailRaw: string) => {
+    ensureSeededUsers();
+    const email = emailRaw.trim().toLowerCase();
+    const users = loadUsers();
+    const match = users.find((u) => u.email.toLowerCase() === email);
+    if (!match) throw new Error("USER_NOT_FOUND");
+    saveSession(match.id);
+    setUser(match);
+    return match;
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ isReady, user, refresh, login, logout, registerMuseum: register, resubmitApplication: resubmit }),
-    [isReady, user, refresh, login, logout, register, resubmit],
+    () => ({
+      isReady,
+      user,
+      refresh,
+      login,
+      logout,
+      registerMuseum: register,
+      resubmitApplication: resubmit,
+      devImpersonate,
+    }),
+    [isReady, user, refresh, login, logout, register, resubmit, devImpersonate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

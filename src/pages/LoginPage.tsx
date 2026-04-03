@@ -20,11 +20,12 @@ function labelClasses() {
 }
 
 export function LoginPage() {
-  const { isReady, user, login, registerMuseum } = useAuth();
+  const { isReady, user, login, registerMuseum, devImpersonate } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("login");
   const [error, setError] = useState<string | null>(null);
+  const authBypassEnabled = true;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,30 +65,34 @@ export function LoginPage() {
     return <Navigate to="/login" replace />;
   }
 
+  const navigateAfterAuth = (nextUser: Awaited<ReturnType<typeof login>>) => {
+    if (nextUser.role === "SUPER_ADMIN") {
+      navigate("/super-admin", { replace: true });
+      return;
+    }
+    if (nextUser.museumStatus === "PENDING_MUSEUM") {
+      navigate("/waiting", { replace: true });
+      return;
+    }
+    if (nextUser.museumStatus === "APPROVED_MUSEUM") {
+      navigate(redirectPath ?? "/cms", { replace: true });
+      return;
+    }
+    if (nextUser.museumStatus === "REJECTED_MUSEUM") {
+      navigate("/rejected", { replace: true });
+      return;
+    }
+    navigate("/login", { replace: true });
+  };
+
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setEmailTouched(true);
     if (!isValidEmail(email)) return;
     try {
-      const user = await login(email, password);
-      if (user.role === "SUPER_ADMIN") {
-        navigate("/super-admin", { replace: true });
-        return;
-      }
-      if (user.museumStatus === "PENDING_MUSEUM") {
-        navigate("/waiting", { replace: true });
-        return;
-      }
-      if (user.museumStatus === "APPROVED_MUSEUM") {
-        navigate(redirectPath ?? "/cms", { replace: true });
-        return;
-      }
-      if (user.museumStatus === "REJECTED_MUSEUM") {
-        navigate("/rejected", { replace: true });
-        return;
-      }
-      navigate("/login", { replace: true });
+      const next = await login(email, password);
+      navigateAfterAuth(next);
     } catch {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
     }
@@ -255,6 +260,47 @@ export function LoginPage() {
                     <LogIn className="h-4 w-4" />
                     로그인
                   </button>
+
+                  {authBypassEnabled ? (
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                        테스트 바로가기 (인증 우회)
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const next = await devImpersonate("super@test.com");
+                              navigateAfterAuth(next);
+                            } catch {
+                              setError("개발용 로그인 처리에 실패했습니다.");
+                            }
+                          }}
+                          className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-900 shadow-sm transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                        >
+                          Super Admin
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const next = await devImpersonate("approved@test.com");
+                              navigateAfterAuth(next);
+                            } catch {
+                              setError("개발용 로그인 처리에 실패했습니다.");
+                            }
+                          }}
+                          className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-900 shadow-sm transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                        >
+                          CMS
+                        </button>
+                      </div>
+                      <div className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+                        인증 없이 바로 로그인됩니다(테스트용).
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 lg:hidden">
                     <div className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">

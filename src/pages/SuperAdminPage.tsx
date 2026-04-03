@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, FileUp, LogOut, Pencil, Search, Shield, Trash2, Users, XCircle } from "lucide-react";
+import { CheckCircle2, FileUp, LogOut, Moon, Pencil, Search, Shield, Sun, Trash2, Users, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { AuthUser } from "../auth/auth";
 import { deleteUser, listApprovedMuseums, listPendingMuseums, setMuseumStatus, updateMuseumProfile } from "../auth/auth";
@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs";
 import { formatKoreanMobile, isValidKoreanMobileDigits, toKoreanMobileDigits } from "../lib/authInput";
+import { useTheme } from "../context/ThemeContext";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -17,6 +18,7 @@ function formatDate(iso: string) {
 export function SuperAdminPage() {
   const { logout, refresh } = useAuth();
   const navigate = useNavigate();
+  const { mode, toggleMode } = useTheme();
   const [pending, setPending] = useState<AuthUser[]>([]);
   const [approved, setApproved] = useState<AuthUser[]>([]);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -186,6 +188,15 @@ export function SuperAdminPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleMode}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+              aria-label={mode === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+              title={mode === "dark" ? "라이트 모드" : "다크 모드"}
+            >
+              {mode === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
             <button
               type="button"
               onClick={() => {

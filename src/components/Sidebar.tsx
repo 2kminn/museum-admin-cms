@@ -34,7 +34,7 @@ export function Sidebar({ onNavigate }: Props) {
               end={"end" in item ? item.end : false}
               className={({ isActive }) =>
                 [
-                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200",
                   isActive
                     ? "bg-zinc-900 text-white"
                     : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-zinc-100",
@@ -45,7 +45,7 @@ export function Sidebar({ onNavigate }: Props) {
                 <>
                   <Icon
                     className={[
-                      "h-5 w-5",
+                      "h-5 w-5 transition-colors duration-200",
                       isActive
                         ? "text-white"
                         : "text-zinc-500 group-hover:text-zinc-700 dark:text-zinc-400 dark:group-hover:text-zinc-200",

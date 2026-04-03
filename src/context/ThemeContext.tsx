@@ -9,27 +9,27 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const STORAGE_KEY = "artar_admin:theme_mode";
+const DEFAULT_STORAGE_KEY = "artar_admin:theme_mode";
 
-function getInitialMode(): ThemeMode {
-  const saved = window.localStorage.getItem(STORAGE_KEY);
+function getInitialMode(storageKey: string): ThemeMode {
+  const saved = window.localStorage.getItem(storageKey);
   if (saved === "light" || saved === "dark") return saved;
   if (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches) return "dark";
   return "light";
 }
 
-function applyHtmlClass(mode: ThemeMode) {
-  const root = document.documentElement;
-  root.classList.toggle("dark", mode === "dark");
-}
-
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>(() => getInitialMode());
+export function ThemeProvider({
+  children,
+  storageKey = DEFAULT_STORAGE_KEY,
+}: {
+  children: React.ReactNode;
+  storageKey?: string;
+}) {
+  const [mode, setModeState] = useState<ThemeMode>(() => getInitialMode(storageKey));
 
   useEffect(() => {
-    applyHtmlClass(mode);
-    window.localStorage.setItem(STORAGE_KEY, mode);
-  }, [mode]);
+    window.localStorage.setItem(storageKey, mode);
+  }, [mode, storageKey]);
 
   const setMode = (next: ThemeMode) => setModeState(next);
   const toggleMode = () => setModeState((m) => (m === "dark" ? "light" : "dark"));
@@ -38,9 +38,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+export function ThemeScope({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const { mode } = useTheme();
+  return (
+    <div
+      className={[mode === "dark" ? "dark" : "", className ?? ""].join(" ").trim()}
+      style={{ colorScheme: mode }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
-
