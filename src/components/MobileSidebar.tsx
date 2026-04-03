@@ -20,7 +20,7 @@ export function MobileSidebar({ open, onClose, children }: Props) {
   return (
     <div
       className={[
-        "fixed inset-0 z-50 md:hidden",
+        "fixed inset-0 z-50 desktop:hidden",
         open ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
       aria-hidden={!open}

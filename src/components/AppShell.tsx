@@ -8,8 +8,8 @@ export function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 md:grid md:grid-cols-[16rem_1fr]">
-      <aside className="hidden md:sticky md:top-0 md:block md:h-screen">
+    <div className="min-h-full bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 desktop:grid desktop:grid-cols-[16rem_1fr]">
+      <aside className="hidden desktop:sticky desktop:top-0 desktop:block desktop:h-screen">
         <Sidebar />
       </aside>
 
@@ -19,7 +19,7 @@ export function AppShell() {
 
       <div className="min-w-0">
         <TopBar onOpenMobileNav={() => setMobileOpen(true)} />
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-6">
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 desktop:px-6">
           <Outlet />
         </main>
       </div>

@@ -34,7 +34,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         <button
           type="button"
           onClick={onOpenMobileNav}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 desktop:hidden"
           aria-label="메뉴 열기"
         >
           <Menu className="h-5 w-5" />
@@ -49,7 +49,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
 
         <div className="ml-auto flex items-center gap-2">
           {user ? (
-            <div className="hidden items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 md:flex">
+            <div className="hidden items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 desktop:flex">
               <UserCircle2 className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
               <span className="max-w-[12rem] truncate">{user.email}</span>
             </div>
@@ -78,7 +78,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           </button>
 
           <label
-            className="hidden text-xs font-medium text-zinc-600 dark:text-zinc-300 md:inline"
+            className="hidden text-xs font-medium text-zinc-600 dark:text-zinc-300 desktop:inline"
             htmlFor="event-selector"
           >
             행사 선택
@@ -87,7 +87,7 @@ export function TopBar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             id="event-selector"
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="h-10 max-w-[16rem] rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm hover:bg-zinc-50 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 md:max-w-[22rem]"
+            className="h-10 max-w-[16rem] rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm hover:bg-zinc-50 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 desktop:max-w-[22rem]"
             aria-label="현재 행사 선택"
           >
             {events.map((evt) => (
