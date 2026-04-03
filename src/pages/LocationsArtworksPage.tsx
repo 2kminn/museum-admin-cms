@@ -114,7 +114,7 @@ export function LocationsArtworksPage() {
   const startCreate = () => {
     resetForm();
     setTab("form");
-    navigate("/artworks/new");
+    navigate("/cms/artworks/new");
   };
 
   const startEdit = (item: ArtworkRecord) => {
@@ -248,7 +248,7 @@ export function LocationsArtworksPage() {
   };
 
   const goEdit = (id: string) => {
-    navigate(`/artworks/${id}/edit`);
+    navigate(`/cms/artworks/${id}/edit`);
   };
 
   return (

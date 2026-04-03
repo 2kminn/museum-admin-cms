@@ -76,7 +76,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       const existing = isEditing ? loaded.find((a) => a.id === artworkId) : undefined;
       if (isEditing && !existing) {
         window.alert("수정 대상이 존재하지 않습니다. 목록으로 돌아갑니다.");
-        navigate("/locations");
+        navigate("/cms/locations");
         return;
       }
 
@@ -119,7 +119,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       // eslint-disable-next-line no-console
       console.log("[ArtworkEditor] save payload", record);
       window.alert("저장 완료(로컬).");
-      navigate("/locations");
+      navigate("/cms/locations");
     } catch {
       window.alert("저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요.");
     } finally {
@@ -159,7 +159,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
 
         <div className="flex items-center gap-2">
           <Link
-            to="/locations"
+            to="/cms/locations"
             className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
           >
             뒤로

@@ -6,11 +6,11 @@ type Props = {
 };
 
 const navItems = [
-  { to: "/dashboard", label: "대시보드", icon: LayoutDashboard },
-  { to: "/events", label: "행사 관리", icon: CalendarDays },
-  { to: "/locations", label: "작품 설정", icon: MapPinned },
-  { to: "/analytics", label: "데이터 통계", icon: BarChart3 },
-  { to: "/theme", label: "테마 편집기", icon: Palette },
+  { to: "/cms", end: true, label: "대시보드", icon: LayoutDashboard },
+  { to: "/cms/events", label: "행사 관리", icon: CalendarDays },
+  { to: "/cms/locations", label: "작품 설정", icon: MapPinned },
+  { to: "/cms/analytics", label: "데이터 통계", icon: BarChart3 },
+  { to: "/cms/theme", label: "테마 편집기", icon: Palette },
 ] as const;
 
 export function Sidebar({ onNavigate }: Props) {
@@ -31,6 +31,7 @@ export function Sidebar({ onNavigate }: Props) {
               key={item.to}
               to={item.to}
               onClick={onNavigate}
+              end={"end" in item ? item.end : false}
               className={({ isActive }) =>
                 [
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
