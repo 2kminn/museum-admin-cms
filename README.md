@@ -14,6 +14,7 @@ museum-admin-cms.vercel.app
 
 로그인 페이지
 <img width="1175" height="595" alt="image" src="https://github.com/user-attachments/assets/f0748431-acfd-4b38-922b-3b149fd8ce5a" />
+<img width="1183" height="704" alt="image" src="https://github.com/user-attachments/assets/75acbd0e-bba8-49db-940e-412057f3e588" />
 
 
 슈퍼유저 인증페이지
