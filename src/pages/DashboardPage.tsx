@@ -40,7 +40,8 @@ export function DashboardPage() {
   const { selectedEvent } = useEventContext();
   const { mode } = useTheme();
   const isDark = mode === "dark";
-  const [activeLanguageIndex, setActiveLanguageIndex] = useState<number | null>(null);
+  const [hoveredLanguageIndex, setHoveredLanguageIndex] = useState<number | null>(null);
+  const [pinnedLanguageIndex, setPinnedLanguageIndex] = useState<number | null>(null);
 
   // Mock data (placeholder until API 연결)
   const daily: DailyVisitors[] = useMemo(
@@ -230,11 +231,12 @@ export function DashboardPage() {
                     innerRadius={58}
                     outerRadius={82}
                     paddingAngle={2}
-                    activeIndex={activeLanguageIndex ?? undefined}
+                    activeIndex={hoveredLanguageIndex ?? pinnedLanguageIndex ?? undefined}
                     activeShape={renderActiveLanguageSlice}
-                    onMouseEnter={(_, index) => setActiveLanguageIndex(index)}
+                    onMouseEnter={(_, index) => setHoveredLanguageIndex(index)}
+                    onMouseLeave={() => setHoveredLanguageIndex(null)}
                     onClick={(_, index) =>
-                      setActiveLanguageIndex((current) => (current === index ? null : index))
+                      setPinnedLanguageIndex((current) => (current === index ? null : index))
                     }
                     style={{ outline: "none" }}
                   >
