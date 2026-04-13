@@ -12,7 +12,6 @@ import { LoginPage } from "./pages/LoginPage";
 import { WaitingForApprovalPage } from "./pages/WaitingForApprovalPage";
 import { SuperAdminPage } from "./pages/SuperAdminPage";
 import { AuthLandingRedirect } from "./auth/AuthLandingRedirect";
-import { LegacyArtworkEditRedirect } from "./pages/LegacyArtworkEditRedirect";
 import { RejectedApplicationPage } from "./pages/RejectedApplicationPage";
 import { ThemeProvider, ThemeScope } from "./context/ThemeContext";
 
@@ -58,12 +57,6 @@ export function App() {
               <Route path="artworks/:artworkId/edit" element={<ArtworkEditorPage mode="edit" />} />
               <Route path="*" element={<Navigate to="/cms" replace />} />
             </Route>
-
-            <Route path="/dashboard" element={<Navigate to="/cms" replace />} />
-            <Route path="/events" element={<Navigate to="/cms/events" replace />} />
-            <Route path="/locations" element={<Navigate to="/cms/locations" replace />} />
-            <Route path="/artworks/new" element={<Navigate to="/cms/artworks/new" replace />} />
-            <Route path="/artworks/:artworkId/edit" element={<LegacyArtworkEditRedirect />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
