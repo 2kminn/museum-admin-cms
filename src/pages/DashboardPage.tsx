@@ -294,19 +294,11 @@ export function DashboardPage() {
                   한국어 외 언어(EN/JP/CN)를 관광객 지표로 집계합니다.
                 </div>
               </div>
-
-              <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">운영 팁</div>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-4 text-zinc-600 dark:text-zinc-300">
-                  <li>관광객 비중이 높으면 다국어 안내/스태프 배치를 강화하세요.</li>
-                  <li>AR 실행 대비 방문자 수가 낮으면 현장 사인/유도 동선을 점검하세요.</li>
-                  <li>체류 시간이 짧으면 트리거 반경/콘텐츠 길이를 조정해 보세요.</li>
-                </ul>
-              </div>
             </div>
           </div>
         </div>
       </section>
+
     </div>
   );
 }

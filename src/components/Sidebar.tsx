@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, LayoutDashboard, MapPinned, Palette } from "lucide-react";
+import { CalendarDays, LayoutDashboard, MapPinned } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 type Props = {
@@ -9,8 +9,6 @@ const navItems = [
   { to: "/cms", end: true, label: "대시보드", icon: LayoutDashboard },
   { to: "/cms/events", label: "행사 관리", icon: CalendarDays },
   { to: "/cms/locations", label: "작품 설정", icon: MapPinned },
-  { to: "/cms/analytics", label: "데이터 통계", icon: BarChart3 },
-  { to: "/cms/theme", label: "테마 편집기", icon: Palette },
 ] as const;
 
 export function Sidebar({ onNavigate }: Props) {

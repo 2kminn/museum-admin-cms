@@ -3,8 +3,6 @@ import { EventProvider } from "./context/EventContext";
 import { AppShell } from "./components/AppShell";
 import { EventManagementPage } from "./pages/EventManagementPage";
 import { LocationsArtworksPage } from "./pages/LocationsArtworksPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { ThemeEditorPage } from "./pages/ThemeEditorPage";
 import { ArtworkEditorPage } from "./pages/ArtworkEditorPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { AuthProvider } from "./auth/AuthContext";
@@ -58,8 +56,6 @@ export function App() {
               <Route path="locations" element={<LocationsArtworksPage />} />
               <Route path="artworks/new" element={<ArtworkEditorPage mode="create" />} />
               <Route path="artworks/:artworkId/edit" element={<ArtworkEditorPage mode="edit" />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="theme" element={<ThemeEditorPage />} />
               <Route path="*" element={<Navigate to="/cms" replace />} />
             </Route>
 
@@ -68,8 +64,6 @@ export function App() {
             <Route path="/locations" element={<Navigate to="/cms/locations" replace />} />
             <Route path="/artworks/new" element={<Navigate to="/cms/artworks/new" replace />} />
             <Route path="/artworks/:artworkId/edit" element={<LegacyArtworkEditRedirect />} />
-            <Route path="/analytics" element={<Navigate to="/cms/analytics" replace />} />
-            <Route path="/theme" element={<Navigate to="/cms/theme" replace />} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
