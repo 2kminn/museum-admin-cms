@@ -4,12 +4,12 @@ import {
   ensureSeededUsers,
   getCurrentUser,
   loadUsers,
-  login as loginFn,
   logout as logoutFn,
   registerMuseum,
   resubmitMuseumApplication,
   saveSession,
 } from "./auth";
+import { apiLogin, clearApiSession, getStoredApiUser } from "../lib/api";
 
 type AuthContextValue = {
   isReady: boolean;
@@ -39,22 +39,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const refresh = useCallback(() => {
-    setUser(getCurrentUser());
+    setUser(getStoredApiUser() ?? getCurrentUser());
   }, []);
 
   useEffect(() => {
     ensureSeededUsers();
-    setUser(getCurrentUser());
+    setUser(getStoredApiUser() ?? getCurrentUser());
     setIsReady(true);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const next = loginFn(email, password);
+    const next = await apiLogin(email, password);
     setUser(next);
     return next;
   }, []);
 
   const logout = useCallback(() => {
+    clearApiSession();
     logoutFn();
     setUser(null);
   }, []);

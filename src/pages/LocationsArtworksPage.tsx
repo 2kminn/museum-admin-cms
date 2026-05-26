@@ -24,6 +24,7 @@ import {
   type ArtworkRecord,
   type ArtworkStatus,
 } from "../lib/localArtworksStore";
+import { apiDeleteArtwork, apiListArtworksForEvent, apiSaveArtworkForEvent } from "../lib/api";
 
 type LocalizedText = ArtworkRecord["localized"];
 
@@ -77,11 +78,28 @@ export function LocationsArtworksPage() {
   useEffect(() => {
     if (!eventId) return;
     if (loadedForEventId === eventId) return;
-    const loaded = loadArtworksForEvent(eventId);
-    setArtworks(loaded);
-    setLoadedForEventId(eventId);
-    setTab("list");
-    setEditingId(null);
+    let cancelled = false;
+
+    apiListArtworksForEvent(eventId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setArtworks(loaded);
+        setLoadedForEventId(eventId);
+        setTab("list");
+        setEditingId(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const loaded = loadArtworksForEvent(eventId);
+        setArtworks(loaded);
+        setLoadedForEventId(eventId);
+        setTab("list");
+        setEditingId(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [eventId, loadedForEventId]);
 
   const filtered = useMemo(() => {
@@ -203,15 +221,24 @@ export function LocationsArtworksPage() {
         updatedAt: nowIso(),
       };
 
-      const next = isEditing ? artworks.map((a) => (a.id === id ? record : a)) : [record, ...artworks];
+      const savedRecord = await apiSaveArtworkForEvent(eventId, record, isEditing).catch(() => {
+        const nextLocal = isEditing
+          ? artworks.map((a) => (a.id === id ? record : a))
+          : [record, ...artworks];
+        saveArtworksForEvent(eventId, nextLocal);
+        return record;
+      });
+
+      const next = isEditing
+        ? artworks.map((a) => (a.id === id ? savedRecord : a))
+        : [savedRecord, ...artworks];
 
       setArtworks(next);
-      saveArtworksForEvent(eventId, next);
 
       // placeholder for backend integration
       // eslint-disable-next-line no-console
-      console.log("[ArtworkManagement] save payload", record);
-      window.alert("저장 완료(로컬). API 연동 시 이 JSON + 파일 업로드를 전송하면 됩니다.");
+      console.log("[ArtworkManagement] save payload", savedRecord);
+      window.alert("저장 완료");
       resetForm();
       setTab("list");
     } catch {
@@ -238,13 +265,17 @@ export function LocationsArtworksPage() {
     );
     if (!ok) return;
 
-    const next = artworks.filter((a) => a.id !== id);
-    setArtworks(next);
-    saveArtworksForEvent(eventId, next);
-    if (editingId === id) {
-      resetForm();
-      setTab("list");
-    }
+    apiDeleteArtwork(id)
+      .catch(() => undefined)
+      .finally(() => {
+        const next = artworks.filter((a) => a.id !== id);
+        setArtworks(next);
+        saveArtworksForEvent(eventId, next);
+        if (editingId === id) {
+          resetForm();
+          setTab("list");
+        }
+      });
   };
 
   const goEdit = (id: string) => {

@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
+import { apiListEvents } from "../lib/api";
 
 type EventOption = {
   id: string;
   name: string;
+  slug?: string;
 };
 
 type EventContextValue = {
@@ -22,12 +25,42 @@ const DEFAULT_EVENTS: EventOption[] = [
 ];
 
 export function EventProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [selectedEventId, setSelectedEventIdState] = useState(DEFAULT_EVENTS[0]?.id ?? "");
+  const [events, setEvents] = useState<EventOption[]>(DEFAULT_EVENTS);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved && DEFAULT_EVENTS.some((e) => e.id === saved)) setSelectedEventIdState(saved);
+    if (saved) setSelectedEventIdState(saved);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user) {
+      setEvents(DEFAULT_EVENTS);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    apiListEvents()
+      .then((items) => {
+        if (cancelled || items.length === 0) return;
+        const next = items.map((event) => ({ id: event.id, name: event.name, slug: event.slug }));
+        setEvents(next);
+        setSelectedEventIdState((current) =>
+          next.some((event) => event.id === current) ? current : next[0]?.id ?? "",
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setEvents(DEFAULT_EVENTS);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const setSelectedEventId = (eventId: string) => {
     setSelectedEventIdState(eventId);
@@ -35,13 +68,13 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   };
 
   const selectedEvent = useMemo(
-    () => DEFAULT_EVENTS.find((e) => e.id === selectedEventId),
-    [selectedEventId],
+    () => events.find((e) => e.id === selectedEventId),
+    [events, selectedEventId],
   );
 
   const value = useMemo<EventContextValue>(
-    () => ({ events: DEFAULT_EVENTS, selectedEventId, setSelectedEventId, selectedEvent }),
-    [selectedEventId, selectedEvent],
+    () => ({ events, selectedEventId, setSelectedEventId, selectedEvent }),
+    [events, selectedEventId, selectedEvent],
   );
 
   return <EventContext.Provider value={value}>{children}</EventContext.Provider>;
@@ -52,4 +85,3 @@ export function useEventContext() {
   if (!ctx) throw new Error("useEventContext must be used within EventProvider");
   return ctx;
 }
-

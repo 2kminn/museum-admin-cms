@@ -13,6 +13,7 @@ import {
   type ArtworkRecord,
   type LocalizedText,
 } from "../lib/localArtworksStore";
+import { apiListArtworksForEvent, apiSaveArtworkForEvent } from "../lib/api";
 
 type Mode = "create" | "edit";
 
@@ -45,17 +46,30 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
   useEffect(() => {
     if (mode !== "edit") return;
     if (!eventId || !artworkId) return;
-    const loaded = loadArtworksForEvent(eventId);
-    const item = loaded.find((a) => a.id === artworkId);
-    if (!item) return;
-    setActiveLang("ko");
-    setLocalized(item.localized);
-    setX(item.spatial.x === null ? "" : String(item.spatial.x));
-    setY(item.spatial.y === null ? "" : String(item.spatial.y));
-    setZ(item.spatial.z === null ? "" : String(item.spatial.z));
-    setTriggerRadiusMeters(item.spatial.triggerRadiusMeters ?? 10);
-    setExistingThumbnail(item.media.thumbnailDataUrl);
-    setExistingMarkers(item.media.markerImages?.length ?? 0);
+    let cancelled = false;
+
+    const applyItem = (item: ArtworkRecord | undefined) => {
+      if (!item || cancelled) return;
+      setActiveLang("ko");
+      setLocalized(item.localized);
+      setX(item.spatial.x === null ? "" : String(item.spatial.x));
+      setY(item.spatial.y === null ? "" : String(item.spatial.y));
+      setZ(item.spatial.z === null ? "" : String(item.spatial.z));
+      setTriggerRadiusMeters(item.spatial.triggerRadiusMeters ?? 10);
+      setExistingThumbnail(item.media.thumbnailDataUrl);
+      setExistingMarkers(item.media.markerImages?.length ?? 0);
+    };
+
+    apiListArtworksForEvent(eventId)
+      .then((loaded) => applyItem(loaded.find((a) => a.id === artworkId)))
+      .catch(() => {
+        const loaded = loadArtworksForEvent(eventId);
+        applyItem(loaded.find((a) => a.id === artworkId));
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [artworkId, eventId, mode]);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -72,7 +86,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
     setIsSaving(true);
     try {
       const isEditing = mode === "edit";
-      const loaded = loadArtworksForEvent(eventId);
+      const loaded = await apiListArtworksForEvent(eventId).catch(() => loadArtworksForEvent(eventId));
       const existing = isEditing ? loaded.find((a) => a.id === artworkId) : undefined;
       if (isEditing && !existing) {
         window.alert("수정 대상이 존재하지 않습니다. 목록으로 돌아갑니다.");
@@ -113,12 +127,15 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
         updatedAt: nowIso(),
       };
 
-      const next = isEditing ? loaded.map((a) => (a.id === id ? record : a)) : [record, ...loaded];
+      const savedRecord = await apiSaveArtworkForEvent(eventId, record, isEditing).catch(() => record);
+      const next = isEditing
+        ? loaded.map((a) => (a.id === id ? savedRecord : a))
+        : [savedRecord, ...loaded];
       saveArtworksForEvent(eventId, next);
 
       // eslint-disable-next-line no-console
-      console.log("[ArtworkEditor] save payload", record);
-      window.alert("저장 완료(로컬).");
+      console.log("[ArtworkEditor] save payload", savedRecord);
+      window.alert("저장 완료");
       navigate("/cms/locations");
     } catch {
       window.alert("저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요.");
