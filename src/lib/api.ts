@@ -300,9 +300,48 @@ export async function apiListEvents() {
   return unwrapList(body);
 }
 
+export async function apiCreateEvent(input: {
+  name: string;
+  slug: string;
+  startDate: string;
+  endDate: string;
+}) {
+  const body = await request<ApiEnvelope<ApiEvent>>("/api/v1/admin/events", {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      slug: input.slug,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      is_public: true,
+    }),
+  });
+  return body.data;
+}
+
 export async function apiListVenues(eventId: string) {
   const body = await request<ApiEnvelope<ApiVenue[]>>(`/api/v1/admin/events/${eventId}/venues`);
   return unwrapList(body);
+}
+
+export async function apiCreateVenueForEvent(input: {
+  eventId: string;
+  name: string;
+  address: string;
+}) {
+  const body = await request<ApiEnvelope<ApiVenue>>(`/api/v1/admin/events/${input.eventId}/venues`, {
+    method: "POST",
+    body: JSON.stringify({
+      name_i18n: { ko: input.name, en: input.name, jp: input.name, cn: input.name },
+      lat: 0,
+      lng: 0,
+      description_i18n: { ko: "", en: "", jp: "", cn: "" },
+      address: input.address,
+      sort_order: 0,
+      is_active: true,
+    }),
+  });
+  return body.data;
 }
 
 async function apiCreateDefaultVenue(eventId: string) {
