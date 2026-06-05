@@ -16,6 +16,22 @@ type ApiEnvelope<T> = {
 type TokenResponse = {
   access_token: string;
   token_type: string;
+  user: ApiAuthUser;
+};
+
+type RegisterResponse = ApiEnvelope<TokenResponse>;
+
+type ApiAuthUser = {
+  id: string;
+  email: string;
+  role: AuthRole;
+  museum_status: MuseumStatus | null;
+  museum_name: string | null;
+  contact: string | null;
+  proof_file_name: string | null;
+  proof_file_url: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type I18nField = {
@@ -70,6 +86,10 @@ function getToken() {
   return window.localStorage.getItem(TOKEN_KEY);
 }
 
+export function hasApiSession() {
+  return Boolean(getToken());
+}
+
 export function getStoredApiUser(): AuthUser | null {
   const raw = window.localStorage.getItem(USER_KEY);
   if (!raw) return null;
@@ -114,13 +134,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let detail = "";
     try {
-      const body = (await res.json()) as { detail?: unknown; message?: string };
+      const body = (await res.json()) as {
+        detail?: unknown;
+        message?: string;
+        error?: { code?: string; message?: string };
+      };
       detail =
-        typeof body.message === "string"
-          ? body.message
-          : typeof body.detail === "string"
-            ? body.detail
-            : JSON.stringify(body.detail ?? body);
+        typeof body.error?.code === "string"
+          ? body.error.code
+          : typeof body.error?.message === "string"
+            ? body.error.message
+            : typeof body.message === "string"
+              ? body.message
+              : typeof body.detail === "string"
+                ? body.detail
+                : JSON.stringify(body.detail ?? body);
     } catch {
       detail = res.statusText;
     }
@@ -131,34 +159,136 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
-function synthesizeUser(username: string): AuthUser {
-  const now = new Date().toISOString();
-  const normalized = username.trim();
-  const role: AuthRole = /super|admin/i.test(normalized) ? "SUPER_ADMIN" : "MUSEUM";
-  const museumStatus: MuseumStatus | null = role === "SUPER_ADMIN" ? null : "APPROVED_MUSEUM";
-
+function mapAuthUser(user: ApiAuthUser): AuthUser {
   return {
-    id: normalized,
-    email: normalized,
-    password: "",
-    role,
-    museumStatus,
-    museumName: role === "MUSEUM" ? "API Museum" : null,
-    contact: null,
-    proofFileName: null,
-    createdAt: now,
-    updatedAt: now,
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    museumStatus: user.museum_status,
+    museumName: user.museum_name,
+    contact: user.contact,
+    proofFileName: user.proof_file_name,
+    proofFileUrl: user.proof_file_url,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
   };
 }
 
 export async function apiLogin(username: string, password: string) {
-  const token = await request<TokenResponse>("/api/v1/admin/auth/login", {
+  const body = await request<TokenResponse>("/api/v1/admin/auth/login", {
     method: "POST",
     body: JSON.stringify({ username, password }),
   });
-  const user = synthesizeUser(username);
-  storeApiSession(token.access_token, user);
+  const user = mapAuthUser(body.user);
+  storeApiSession(body.access_token, user);
   return user;
+}
+
+export async function apiRegisterMuseum(input: {
+  email: string;
+  password: string;
+  museumName: string;
+  contact: string;
+  proofFile: File | null;
+}) {
+  const form = new FormData();
+  form.append("email", input.email);
+  form.append("password", input.password);
+  form.append("museum_name", input.museumName);
+  form.append("contact", input.contact);
+  if (input.proofFile) form.append("proof_file", input.proofFile);
+
+  const body = await request<RegisterResponse>("/api/v1/admin/auth/register-museum", {
+    method: "POST",
+    body: form,
+  });
+  const user = mapAuthUser(body.data.user);
+  storeApiSession(body.data.access_token, user);
+  return user;
+}
+
+export async function apiGetMe() {
+  const body = await request<ApiEnvelope<ApiAuthUser>>("/api/v1/admin/auth/me");
+  const user = mapAuthUser(body.data);
+  const token = getToken();
+  if (token) storeApiSession(token, user);
+  return user;
+}
+
+export async function apiResubmitMuseumApplication(input: {
+  museumName: string;
+  contact: string;
+  proofFile: File | null;
+}) {
+  const form = new FormData();
+  form.append("museum_name", input.museumName);
+  form.append("contact", input.contact);
+  if (input.proofFile) form.append("proof_file", input.proofFile);
+
+  const body = await request<ApiEnvelope<ApiAuthUser>>(
+    "/api/v1/admin/auth/museum-application/resubmit",
+    {
+      method: "PATCH",
+      body: form,
+    },
+  );
+  const user = mapAuthUser(body.data);
+  const token = getToken();
+  if (token) storeApiSession(token, user);
+  return user;
+}
+
+export async function apiListMuseums(input: {
+  status?: MuseumStatus;
+  q?: string;
+  page?: number;
+  perPage?: number;
+} = {}) {
+  const params = new URLSearchParams();
+  if (input.status) params.set("status", input.status);
+  if (input.q?.trim()) params.set("q", input.q.trim());
+  params.set("page", String(input.page ?? 1));
+  params.set("per_page", String(input.perPage ?? 100));
+
+  const body = await request<ApiEnvelope<ApiAuthUser[]>>(
+    `/api/v1/admin/museums?${params.toString()}`,
+  );
+  return {
+    data: unwrapList(body).map(mapAuthUser),
+    meta: body.meta ?? { total: 0, page: input.page ?? 1, per_page: input.perPage ?? 100 },
+  };
+}
+
+export async function apiSetMuseumStatus(userId: string, museumStatus: MuseumStatus) {
+  const body = await request<ApiEnvelope<ApiAuthUser>>(`/api/v1/admin/museums/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ museum_status: museumStatus }),
+  });
+  return mapAuthUser(body.data);
+}
+
+export async function apiUpdateMuseumProfile(input: {
+  userId: string;
+  museumName: string;
+  contact: string;
+  proofFile: File | null;
+}) {
+  const form = new FormData();
+  form.append("museum_name", input.museumName);
+  form.append("contact", input.contact);
+  if (input.proofFile) form.append("proof_file", input.proofFile);
+
+  const body = await request<ApiEnvelope<ApiAuthUser>>(`/api/v1/admin/museums/${input.userId}`, {
+    method: "PATCH",
+    body: form,
+  });
+  return mapAuthUser(body.data);
+}
+
+export async function apiDeleteMuseum(userId: string) {
+  await request<ApiEnvelope<{ ok: boolean }>>(`/api/v1/admin/museums/${userId}`, {
+    method: "DELETE",
+  });
 }
 
 function unwrapList<T>(body: ApiEnvelope<T[]>): T[] {

@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, FileUp, LogOut, Moon, Pencil, Search, Shield, Sun, Trash2, Users, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { AuthUser } from "../auth/auth";
-import { deleteUser, listApprovedMuseums, listPendingMuseums, setMuseumStatus, updateMuseumProfile } from "../auth/auth";
 import { useAuth } from "../auth/AuthContext";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs";
 import { formatKoreanMobile, isValidKoreanMobileDigits, toKoreanMobileDigits } from "../lib/authInput";
 import { useTheme } from "../context/ThemeContext";
+import { apiDeleteMuseum, apiListMuseums, apiSetMuseumStatus, apiUpdateMuseumProfile } from "../lib/api";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -34,19 +34,32 @@ export function SuperAdminPage() {
   const [contactDigits, setContactDigits] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [contactTouched, setContactTouched] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const reloadPending = () => setPending(listPendingMuseums());
-  const reloadApproved = () => setApproved(listApprovedMuseums());
+  const reloadPending = async () => {
+    const body = await apiListMuseums({ status: "PENDING_MUSEUM", perPage: 100 });
+    setPending(body.data);
+  };
+  const reloadApproved = async () => {
+    const body = await apiListMuseums({ status: "APPROVED_MUSEUM", perPage: 100 });
+    setApproved(body.data);
+  };
+  const reloadAll = async () => {
+    setLoadError(null);
+    try {
+      await Promise.all([reloadPending(), reloadApproved()]);
+    } catch {
+      setLoadError("미술관 목록을 불러오지 못했습니다.");
+    }
+  };
 
   useEffect(() => {
-    reloadPending();
-    reloadApproved();
+    void reloadAll();
     const onStorage = () => {
       refresh();
-      reloadPending();
-      reloadApproved();
+      void reloadAll();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -75,16 +88,22 @@ export function SuperAdminPage() {
     return approved.find((u) => u.id === editingApprovedId) ?? null;
   }, [approved, editingApprovedId]);
 
-  const approve = (userId: string) => {
-    setMuseumStatus(userId, "APPROVED_MUSEUM");
-    reloadPending();
-    reloadApproved();
+  const approve = async (userId: string) => {
+    try {
+      await apiSetMuseumStatus(userId, "APPROVED_MUSEUM");
+      await reloadAll();
+    } catch {
+      setLoadError("승인 처리 중 오류가 발생했습니다.");
+    }
   };
 
-  const reject = (userId: string) => {
-    setMuseumStatus(userId, "REJECTED_MUSEUM");
-    reloadPending();
-    reloadApproved();
+  const reject = async (userId: string) => {
+    try {
+      await apiSetMuseumStatus(userId, "REJECTED_MUSEUM");
+      await reloadAll();
+    } catch {
+      setLoadError("거절 처리 중 오류가 발생했습니다.");
+    }
   };
 
   const startEditApproved = (u: AuthUser) => {
@@ -107,7 +126,7 @@ export function SuperAdminPage() {
     setContactTouched(false);
   };
 
-  const onSaveApproved = (e: React.FormEvent) => {
+  const onSaveApproved = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveError(null);
     setContactTouched(true);
@@ -122,24 +141,24 @@ export function SuperAdminPage() {
     }
 
     try {
-      updateMuseumProfile({
+      await apiUpdateMuseumProfile({
         userId: editingApprovedId,
         museumName,
         contact: formatKoreanMobile(contactDigits),
-        proofFileName: proofFile?.name ?? editingApproved?.proofFileName ?? null,
+        proofFile,
       });
-      reloadApproved();
+      await reloadApproved();
       cancelEditApproved();
     } catch {
       setSaveError("저장 중 오류가 발생했습니다.");
     }
   };
 
-  const onDeleteApproved = () => {
+  const onDeleteApproved = async () => {
     if (!editingApprovedId) return;
     try {
-      deleteUser(editingApprovedId);
-      reloadApproved();
+      await apiDeleteMuseum(editingApprovedId);
+      await reloadApproved();
       cancelEditApproved();
     } catch {
       setSaveError("삭제 중 오류가 발생했습니다.");
@@ -254,6 +273,12 @@ export function SuperAdminPage() {
             </Tabs>
           </div>
 
+          {loadError ? (
+            <div className="border-b border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+              {loadError}
+            </div>
+          ) : null}
+
           {tab === "pending" ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
@@ -288,6 +313,16 @@ export function SuperAdminPage() {
                         <td className="px-5 py-4">{u.contact ?? "-"}</td>
                         <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400">
                           {u.proofFileName ?? "-"}
+                          {u.proofFileUrl ? (
+                            <a
+                              href={u.proofFileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="ml-2 text-xs font-medium text-zinc-900 underline dark:text-zinc-100"
+                            >
+                              보기
+                            </a>
+                          ) : null}
                         </td>
                         <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400">
                           {formatDate(u.createdAt)}
@@ -358,6 +393,16 @@ export function SuperAdminPage() {
                               <td className="px-4 py-4">{u.contact ?? "-"}</td>
                               <td className="px-4 py-4 text-zinc-500 dark:text-zinc-400">
                                 {u.proofFileName ?? "-"}
+                                {u.proofFileUrl ? (
+                                  <a
+                                    href={u.proofFileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="ml-2 text-xs font-medium text-zinc-900 underline dark:text-zinc-100"
+                                  >
+                                    보기
+                                  </a>
+                                ) : null}
                               </td>
                               <td className="px-4 py-4">
                                 <button
@@ -489,7 +534,7 @@ export function SuperAdminPage() {
                       삭제
                     </button>
                     <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                      삭제 시 계정이 localStorage에서 제거됩니다.
+                      삭제 시 계정이 서버에서 제거됩니다.
                     </div>
                   </div>
                 </form>
@@ -499,7 +544,7 @@ export function SuperAdminPage() {
         </div>
 
         <div className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-          승인/거절 결과는 localStorage에 저장됩니다.
+          승인/거절 결과는 서버에 저장됩니다.
         </div>
       </div>
     </div>

@@ -1,15 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { AuthUser } from "./auth";
 import {
-  ensureSeededUsers,
-  getCurrentUser,
-  loadUsers,
-  logout as logoutFn,
-  registerMuseum,
-  resubmitMuseumApplication,
-  saveSession,
-} from "./auth";
-import { apiLogin, clearApiSession, getStoredApiUser } from "../lib/api";
+  apiGetMe,
+  apiLogin,
+  apiRegisterMuseum,
+  apiResubmitMuseumApplication,
+  clearApiSession,
+  getStoredApiUser,
+  hasApiSession,
+} from "../lib/api";
 
 type AuthContextValue = {
   isReady: boolean;
@@ -22,14 +21,13 @@ type AuthContextValue = {
     password: string;
     museumName: string;
     contact: string;
-    proofFileName: string | null;
+    proofFile: File | null;
   }) => Promise<AuthUser>;
   resubmitApplication: (input: {
     museumName: string;
     contact: string;
-    proofFileName: string | null;
+    proofFile: File | null;
   }) => Promise<AuthUser>;
-  devImpersonate: (email: string) => Promise<AuthUser>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -39,13 +37,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const refresh = useCallback(() => {
-    setUser(getStoredApiUser() ?? getCurrentUser());
+    const stored = getStoredApiUser();
+    setUser(stored);
+    if (!hasApiSession()) return;
+    void apiGetMe()
+      .then(setUser)
+      .catch(() => {
+        clearApiSession();
+        setUser(null);
+      });
   }, []);
 
   useEffect(() => {
-    ensureSeededUsers();
-    setUser(getStoredApiUser() ?? getCurrentUser());
+    setUser(getStoredApiUser());
     setIsReady(true);
+    if (!hasApiSession()) return;
+    void apiGetMe()
+      .then(setUser)
+      .catch(() => {
+        clearApiSession();
+        setUser(null);
+      });
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -56,7 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearApiSession();
-    logoutFn();
     setUser(null);
   }, []);
 
@@ -65,34 +76,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string;
     museumName: string;
     contact: string;
-    proofFileName: string | null;
+    proofFile: File | null;
   }) => {
-    const next = registerMuseum(input);
+    const next = await apiRegisterMuseum(input);
     setUser(next);
     return next;
   }, []);
 
   const resubmit = useCallback(
-    async (input: { museumName: string; contact: string; proofFileName: string | null }) => {
-      const current = getCurrentUser();
-      if (!current) throw new Error("NOT_LOGGED_IN");
-      const next = resubmitMuseumApplication({ userId: current.id, ...input });
+    async (input: { museumName: string; contact: string; proofFile: File | null }) => {
+      const next = await apiResubmitMuseumApplication(input);
       setUser(next);
       return next;
     },
     [],
   );
-
-  const devImpersonate = useCallback(async (emailRaw: string) => {
-    ensureSeededUsers();
-    const email = emailRaw.trim().toLowerCase();
-    const users = loadUsers();
-    const match = users.find((u) => u.email.toLowerCase() === email);
-    if (!match) throw new Error("USER_NOT_FOUND");
-    saveSession(match.id);
-    setUser(match);
-    return match;
-  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -103,9 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       registerMuseum: register,
       resubmitApplication: resubmit,
-      devImpersonate,
     }),
-    [isReady, user, refresh, login, logout, register, resubmit, devImpersonate],
+    [isReady, user, refresh, login, logout, register, resubmit],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

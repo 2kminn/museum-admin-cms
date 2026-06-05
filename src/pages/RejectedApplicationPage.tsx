@@ -60,7 +60,7 @@ export function RejectedApplicationPage() {
       await resubmitApplication({
         museumName,
         contact: formatKoreanMobile(contactDigits),
-        proofFileName: proofFile?.name ?? user.proofFileName ?? null,
+        proofFile,
       });
       navigate("/waiting", { replace: true });
     } catch (err) {
@@ -178,9 +178,6 @@ export function RejectedApplicationPage() {
                     <div className="min-w-0 truncate text-xs text-zinc-500 dark:text-zinc-400">
                       {proofLabel}
                     </div>
-                  </div>
-                  <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                    파일은 저장하지 않고 파일명만 localStorage에 기록합니다(목업).
                   </div>
                 </div>
 

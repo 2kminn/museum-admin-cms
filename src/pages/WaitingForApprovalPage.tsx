@@ -86,7 +86,7 @@ export function WaitingForApprovalPage() {
                 </button>
               </div>
               <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                Tip: 다른 브라우저/탭에서 `super@test.com`으로 로그인 후 승인하면 바로 접근 가능합니다.
+                관리자가 승인한 뒤 상태 새로고침을 누르면 CMS로 이동합니다.
               </div>
             </div>
           </div>

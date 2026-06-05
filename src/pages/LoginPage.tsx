@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Building2, FileUp, Landmark, Lock, LogIn, Mail, Phone, UserPlus } from "lucide-react";
+import { FileUp, Landmark, Lock, LogIn, Mail, Phone, Shield, UserPlus } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import {
   formatKoreanMobile,
@@ -11,6 +11,8 @@ import {
 
 type Tab = "login" | "register";
 
+const SUPER_ADMIN_EMAIL = "admin@artar.local";
+
 function inputBaseClasses() {
   return "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100";
 }
@@ -20,12 +22,11 @@ function labelClasses() {
 }
 
 export function LoginPage() {
-  const { isReady, user, login, registerMuseum, devImpersonate } = useAuth();
+  const { isReady, user, login, registerMuseum } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("login");
   const [error, setError] = useState<string | null>(null);
-  const authBypassEnabled = true;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,6 +99,27 @@ export function LoginPage() {
     }
   };
 
+  const onSuperAdminShortcut = async () => {
+    setError(null);
+    setTab("login");
+    setEmail(SUPER_ADMIN_EMAIL);
+    setEmailTouched(true);
+
+    const nextPassword = password || window.prompt("SUPER_ADMIN 비밀번호를 입력하세요.") || "";
+    if (!nextPassword) {
+      setError("SUPER_ADMIN 비밀번호를 입력해 주세요.");
+      return;
+    }
+
+    setPassword(nextPassword);
+    try {
+      const next = await login(SUPER_ADMIN_EMAIL, nextPassword);
+      navigateAfterAuth(next);
+    } catch {
+      setError("SUPER_ADMIN 로그인에 실패했습니다. 비밀번호를 확인해 주세요.");
+    }
+  };
+
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -110,7 +132,7 @@ export function LoginPage() {
         password,
         museumName,
         contact: formatKoreanMobile(contactDigits),
-        proofFileName: proofFile?.name ?? null,
+        proofFile,
       });
       navigate("/waiting", { replace: true });
     } catch (err) {
@@ -136,7 +158,7 @@ export function LoginPage() {
                 </div>
                 <div>
                   <div className="text-lg font-semibold">ArtAR Busan</div>
-                  <div className="text-sm text-zinc-500 dark:text-zinc-400">Admin CMS · Multi-role 인증(Mock)</div>
+                  <div className="text-sm text-zinc-500 dark:text-zinc-400">Admin CMS · Multi-role 인증</div>
                 </div>
               </div>
 
@@ -145,19 +167,15 @@ export function LoginPage() {
                   <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">테스트 계정</div>
                   <ul className="mt-2 space-y-1 text-xs">
                     <li>
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">SUPER_ADMIN</span>: super@test.com
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">SUPER_ADMIN</span>: admin@artar.local
                     </li>
-                    <li>
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">PENDING_MUSEUM</span>: pending@test.com
+                    <li className="pt-1 text-zinc-500 dark:text-zinc-400">
+                      비밀번호는 별도 안전한 채널로 전달받은 값을 사용하세요.
                     </li>
-                    <li>
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">APPROVED_MUSEUM</span>: approved@test.com
-                    </li>
-                    <li className="pt-1 text-zinc-500 dark:text-zinc-400">비밀번호: password</li>
                   </ul>
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  본 화면은 localStorage를 사용해 서버 없이 인증/승인 플로우를 시뮬레이션합니다.
+                  회원가입 신청은 서버에 저장되며 승인 상태에 따라 자동으로 이동합니다.
                 </p>
               </div>
             </div>
@@ -261,58 +279,14 @@ export function LoginPage() {
                     로그인
                   </button>
 
-                  {authBypassEnabled ? (
-                    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-                      <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                        테스트 바로가기 (인증 우회)
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const next = await devImpersonate("super@test.com");
-                              navigateAfterAuth(next);
-                            } catch {
-                              setError("개발용 로그인 처리에 실패했습니다.");
-                            }
-                          }}
-                          className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-900 shadow-sm transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                        >
-                          Super Admin
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const next = await devImpersonate("approved@test.com");
-                              navigateAfterAuth(next);
-                            } catch {
-                              setError("개발용 로그인 처리에 실패했습니다.");
-                            }
-                          }}
-                          className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-900 shadow-sm transition-colors duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                        >
-                          CMS
-                        </button>
-                      </div>
-                      <div className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
-                        인증 없이 바로 로그인됩니다(테스트용).
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 lg:hidden">
-                    <div className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-100">
-                      <Building2 className="h-4 w-4" />
-                      테스트 계정
-                    </div>
-                    <div className="mt-2 grid gap-1">
-                      <div>super@test.com / password</div>
-                      <div>pending@test.com / password</div>
-                      <div>approved@test.com / password</div>
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={onSuperAdminShortcut}
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+                  >
+                    <Shield className="h-4 w-4" />
+                    슈퍼관리자 테스트 로그인
+                  </button>
                 </form>
               ) : (
                 <form onSubmit={onRegister} className="space-y-4">
@@ -424,9 +398,6 @@ export function LoginPage() {
                         <div className="min-w-0 truncate text-xs text-zinc-500 dark:text-zinc-400">
                           {proofFile?.name ?? "선택된 파일 없음"}
                         </div>
-                      </div>
-                      <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                        파일은 저장하지 않고 파일명만 localStorage에 기록합니다(목업).
                       </div>
                     </div>
                   </div>
