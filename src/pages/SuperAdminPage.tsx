@@ -7,7 +7,13 @@ import { ConfirmModal } from "../components/ConfirmModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs";
 import { formatKoreanMobile, isValidKoreanMobileDigits, toKoreanMobileDigits } from "../lib/authInput";
 import { useTheme } from "../context/ThemeContext";
-import { apiDeleteMuseum, apiListMuseums, apiSetMuseumStatus, apiUpdateMuseumProfile } from "../lib/api";
+import {
+  apiDeleteMuseum,
+  apiGetMuseumProofUrl,
+  apiListMuseums,
+  apiSetMuseumStatus,
+  apiUpdateMuseumProfile,
+} from "../lib/api";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -103,6 +109,16 @@ export function SuperAdminPage() {
       await reloadAll();
     } catch {
       setLoadError("거절 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  const openProof = async (userId: string) => {
+    setLoadError(null);
+    try {
+      const proof = await apiGetMuseumProofUrl(userId);
+      window.open(proof.url, "_blank", "noopener,noreferrer");
+    } catch {
+      setLoadError("증빙 파일 URL을 불러오지 못했습니다.");
     }
   };
 
@@ -313,15 +329,14 @@ export function SuperAdminPage() {
                         <td className="px-5 py-4">{u.contact ?? "-"}</td>
                         <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400">
                           {u.proofFileName ?? "-"}
-                          {u.proofFileUrl ? (
-                            <a
-                              href={u.proofFileUrl}
-                              target="_blank"
-                              rel="noreferrer"
+                          {u.proofFileName ? (
+                            <button
+                              type="button"
+                              onClick={() => openProof(u.id)}
                               className="ml-2 text-xs font-medium text-zinc-900 underline dark:text-zinc-100"
                             >
-                              보기
-                            </a>
+                              증빙 보기
+                            </button>
                           ) : null}
                         </td>
                         <td className="px-5 py-4 text-zinc-500 dark:text-zinc-400">
@@ -393,15 +408,14 @@ export function SuperAdminPage() {
                               <td className="px-4 py-4">{u.contact ?? "-"}</td>
                               <td className="px-4 py-4 text-zinc-500 dark:text-zinc-400">
                                 {u.proofFileName ?? "-"}
-                                {u.proofFileUrl ? (
-                                  <a
-                                    href={u.proofFileUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
+                                {u.proofFileName ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => openProof(u.id)}
                                     className="ml-2 text-xs font-medium text-zinc-900 underline dark:text-zinc-100"
                                   >
-                                    보기
-                                  </a>
+                                    증빙 보기
+                                  </button>
                                 ) : null}
                               </td>
                               <td className="px-4 py-4">

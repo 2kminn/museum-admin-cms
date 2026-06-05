@@ -291,6 +291,16 @@ export async function apiDeleteMuseum(userId: string) {
   });
 }
 
+export async function apiGetMuseumProofUrl(userId: string) {
+  const body = await request<ApiEnvelope<{ url: string; proof_file_name: string | null }>>(
+    `/api/v1/admin/museums/${userId}/proof-url`,
+  );
+  return {
+    url: body.data.url,
+    proofFileName: body.data.proof_file_name,
+  };
+}
+
 function unwrapList<T>(body: ApiEnvelope<T[]>): T[] {
   return Array.isArray(body.data) ? body.data : [];
 }

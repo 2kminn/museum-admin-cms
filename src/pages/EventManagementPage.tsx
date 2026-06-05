@@ -1,9 +1,24 @@
 import React, { useMemo, useState } from "react";
-import { Building2, CalendarDays, CheckCircle2, MapPin, Plus, UserRound } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ListChecks,
+  MapPin,
+  MessageSquareText,
+  Plus,
+  UserRound,
+} from "lucide-react";
 import { useEventContext } from "../context/EventContext";
+
+type ViewMode = "list" | "create";
 
 function inputBaseClasses() {
   return "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100";
+}
+
+function textareaBaseClasses() {
+  return "min-h-24 w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100";
 }
 
 function labelClasses() {
@@ -18,12 +33,14 @@ function formatDateRange(startDate?: string, endDate?: string) {
 
 export function EventManagementPage() {
   const { events, selectedEvent, setSelectedEventId, addEvent } = useEventContext();
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [name, setName] = useState("");
   const [exhibitionHallName, setExhibitionHallName] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [organizerName, setOrganizerName] = useState("");
+  const [memo, setMemo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -78,6 +95,7 @@ export function EventManagementPage() {
         startDate,
         endDate,
         organizerName,
+        memo,
       });
       setName("");
       setExhibitionHallName("");
@@ -85,7 +103,9 @@ export function EventManagementPage() {
       setStartDate("");
       setEndDate("");
       setOrganizerName("");
+      setMemo("");
       setSavedMessage(`${created.name} 행사가 추가되었습니다.`);
+      setViewMode("list");
     } finally {
       setIsSaving(false);
     }
@@ -103,7 +123,59 @@ export function EventManagementPage() {
         </p>
       </div>
 
-      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-950 sm:w-[22rem]">
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("list");
+              setError(null);
+            }}
+            className={[
+              "inline-flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
+              viewMode === "list"
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100",
+            ].join(" ")}
+          >
+            <ListChecks className="h-4 w-4" />
+            행사 정보
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode("create");
+              setSavedMessage(null);
+            }}
+            className={[
+              "inline-flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
+              viewMode === "create"
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-100"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100",
+            ].join(" ")}
+          >
+            <Plus className="h-4 w-4" />
+            행사 등록
+          </button>
+        </div>
+
+        <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          총 {sortedEvents.length}개 행사
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+          {error}
+        </div>
+      ) : null}
+      {savedMessage ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
+          {savedMessage}
+        </div>
+      ) : null}
+
+      {viewMode === "create" ? (
         <form
           onSubmit={onSubmit}
           className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
@@ -119,17 +191,6 @@ export function EventManagementPage() {
               <CalendarDays className="h-5 w-5" />
             </div>
           </div>
-
-          {error ? (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
-              {error}
-            </div>
-          ) : null}
-          {savedMessage ? (
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
-              {savedMessage}
-            </div>
-          ) : null}
 
           <div className="mt-4 space-y-4">
             <div>
@@ -220,6 +281,22 @@ export function EventManagementPage() {
               </div>
             </div>
 
+            <div>
+              <label className={labelClasses()} htmlFor="event-memo">
+                비고/메모
+              </label>
+              <div className="relative mt-1">
+                <MessageSquareText className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                <textarea
+                  id="event-memo"
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                  className={[textareaBaseClasses(), "pl-10"].join(" ")}
+                  placeholder="예) 현장 운영 특이사항, 설치 일정, 담당자 참고 메모"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isSaving}
@@ -230,7 +307,7 @@ export function EventManagementPage() {
             </button>
           </div>
         </form>
-
+      ) : (
         <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -286,13 +363,19 @@ export function EventManagementPage() {
                       <span className="font-semibold text-zinc-900 dark:text-zinc-100">위치</span>{" "}
                       <span className="break-words">{event.location ?? "-"}</span>
                     </div>
+                    {event.memo ? (
+                      <div className="min-w-0 sm:col-span-2">
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">비고</span>{" "}
+                        <span className="break-words">{event.memo}</span>
+                      </div>
+                    ) : null}
                   </div>
                 </button>
               );
             })}
           </div>
         </div>
-      </section>
+      )}
     </div>
   );
 }

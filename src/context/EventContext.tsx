@@ -11,6 +11,7 @@ export type EventOption = {
   startDate?: string;
   endDate?: string;
   organizerName?: string;
+  memo?: string;
 };
 
 export type EventInput = {
@@ -20,6 +21,7 @@ export type EventInput = {
   startDate: string;
   endDate: string;
   organizerName: string;
+  memo: string;
 };
 
 type EventContextValue = {
@@ -44,6 +46,7 @@ const DEFAULT_EVENTS: EventOption[] = [
     startDate: "2026-03-18",
     endDate: "2026-03-24",
     organizerName: "ArtAR Busan",
+    memo: "대표 테스트 행사",
   },
   {
     id: "gwangalli-ar-festival",
@@ -53,6 +56,7 @@ const DEFAULT_EVENTS: EventOption[] = [
     startDate: "2026-04-10",
     endDate: "2026-04-19",
     organizerName: "ArtAR Busan",
+    memo: "야외 전시 기준 샘플",
   },
   {
     id: "haeundae-media-walk",
@@ -62,6 +66,7 @@ const DEFAULT_EVENTS: EventOption[] = [
     startDate: "2026-05-01",
     endDate: "2026-05-10",
     organizerName: "ArtAR Busan",
+    memo: "실내 동선형 전시 샘플",
   },
 ];
 
@@ -171,6 +176,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       startDate: input.startDate,
       endDate: input.endDate,
       organizerName: input.organizerName.trim(),
+      memo: input.memo.trim(),
     };
 
     let nextEvent = localEvent;

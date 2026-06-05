@@ -12,6 +12,8 @@ import {
 type Tab = "login" | "register";
 
 const SUPER_ADMIN_EMAIL = "admin@artar.local";
+const SHOW_TEST_LOGIN =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_AUTH_BYPASS === "true";
 
 function inputBaseClasses() {
   return "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100";
@@ -22,7 +24,7 @@ function labelClasses() {
 }
 
 export function LoginPage() {
-  const { isReady, user, login, registerMuseum } = useAuth();
+  const { isReady, user, login, testLogin, registerMuseum } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("login");
@@ -118,6 +120,12 @@ export function LoginPage() {
     } catch {
       setError("SUPER_ADMIN 로그인에 실패했습니다. 비밀번호를 확인해 주세요.");
     }
+  };
+
+  const onTestLogin = (role: "museum" | "super-admin") => {
+    setError(null);
+    const next = testLogin(role);
+    navigateAfterAuth(next);
   };
 
   const onRegister = async (e: React.FormEvent) => {
@@ -281,12 +289,25 @@ export function LoginPage() {
 
                   <button
                     type="button"
-                    onClick={onSuperAdminShortcut}
+                    onClick={() =>
+                      SHOW_TEST_LOGIN ? onTestLogin("super-admin") : onSuperAdminShortcut()
+                    }
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
                   >
                     <Shield className="h-4 w-4" />
                     슈퍼관리자 테스트 로그인
                   </button>
+
+                  {SHOW_TEST_LOGIN ? (
+                    <button
+                      type="button"
+                      onClick={() => onTestLogin("museum")}
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+                    >
+                      <Landmark className="h-4 w-4" />
+                      CMS 테스트 로그인
+                    </button>
+                  ) : null}
                 </form>
               ) : (
                 <form onSubmit={onRegister} className="space-y-4">
