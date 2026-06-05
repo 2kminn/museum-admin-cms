@@ -1,17 +1,32 @@
 import React, { useMemo, useState } from "react";
 import {
+  ArrowLeft,
   Building2,
   CalendarDays,
   CheckCircle2,
+  Edit3,
   ListChecks,
   MapPin,
   MessageSquareText,
   Plus,
+  Save,
+  X,
   UserRound,
 } from "lucide-react";
-import { useEventContext } from "../context/EventContext";
+import { useEventContext, type EventInput, type EventOption } from "../context/EventContext";
 
 type ViewMode = "list" | "create";
+type EventFormValues = EventInput;
+
+const EMPTY_FORM: EventFormValues = {
+  name: "",
+  exhibitionHallName: "",
+  location: "",
+  startDate: "",
+  endDate: "",
+  organizerName: "",
+  memo: "",
+};
 
 function inputBaseClasses() {
   return "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100";
@@ -31,8 +46,41 @@ function formatDateRange(startDate?: string, endDate?: string) {
   return startDate ?? endDate ?? "-";
 }
 
+function eventToForm(event: EventOption): EventFormValues {
+  return {
+    name: event.name,
+    exhibitionHallName: event.exhibitionHallName ?? "",
+    location: event.location ?? "",
+    startDate: event.startDate ?? "",
+    endDate: event.endDate ?? "",
+    organizerName: event.organizerName ?? "",
+    memo: event.memo ?? "",
+  };
+}
+
+function validateEventInput(input: EventInput) {
+  if (!input.name.trim()) return "행사명을 입력해 주세요.";
+  if (!input.exhibitionHallName.trim()) return "전시관 명을 입력해 주세요.";
+  if (!input.location.trim()) return "위치를 입력해 주세요.";
+  if (!input.startDate || !input.endDate) return "행사 기간을 입력해 주세요.";
+  if (input.startDate > input.endDate) return "종료일은 시작일 이후로 입력해 주세요.";
+  if (!input.organizerName.trim()) return "주최측명을 입력해 주세요.";
+  return null;
+}
+
+function DetailRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{label}</div>
+      <div className="mt-2 break-words text-sm font-medium text-zinc-900 dark:text-zinc-100">
+        {value?.trim() ? value : "-"}
+      </div>
+    </div>
+  );
+}
+
 export function EventManagementPage() {
-  const { events, selectedEvent, setSelectedEventId, addEvent } = useEventContext();
+  const { events, selectedEvent, setSelectedEventId, addEvent, updateEvent } = useEventContext();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [name, setName] = useState("");
   const [exhibitionHallName, setExhibitionHallName] = useState("");
@@ -41,6 +89,9 @@ export function EventManagementPage() {
   const [endDate, setEndDate] = useState("");
   const [organizerName, setOrganizerName] = useState("");
   const [memo, setMemo] = useState("");
+  const [detailEventId, setDetailEventId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EventFormValues>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,59 +107,89 @@ export function EventManagementPage() {
     [events],
   );
 
+  const detailEvent = useMemo(
+    () => events.find((event) => event.id === detailEventId) ?? null,
+    [detailEventId, events],
+  );
+
+  const resetCreateForm = () => {
+    setName("");
+    setExhibitionHallName("");
+    setLocation("");
+    setStartDate("");
+    setEndDate("");
+    setOrganizerName("");
+    setMemo("");
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSavedMessage(null);
 
-    if (!name.trim()) {
-      setError("행사명을 입력해 주세요.");
-      return;
-    }
-    if (!exhibitionHallName.trim()) {
-      setError("전시관 명을 입력해 주세요.");
-      return;
-    }
-    if (!location.trim()) {
-      setError("위치를 입력해 주세요.");
-      return;
-    }
-    if (!startDate || !endDate) {
-      setError("행사 기간을 입력해 주세요.");
-      return;
-    }
-    if (startDate > endDate) {
-      setError("종료일은 시작일 이후로 입력해 주세요.");
-      return;
-    }
-    if (!organizerName.trim()) {
-      setError("주최측명을 입력해 주세요.");
+    const input = {
+      name,
+      exhibitionHallName,
+      location,
+      startDate,
+      endDate,
+      organizerName,
+      memo,
+    };
+    const validationError = validateEventInput(input);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setIsSaving(true);
     try {
-      const created = await addEvent({
-        name,
-        exhibitionHallName,
-        location,
-        startDate,
-        endDate,
-        organizerName,
-        memo,
-      });
-      setName("");
-      setExhibitionHallName("");
-      setLocation("");
-      setStartDate("");
-      setEndDate("");
-      setOrganizerName("");
-      setMemo("");
+      const created = await addEvent(input);
+      resetCreateForm();
       setSavedMessage(`${created.name} 행사가 추가되었습니다.`);
       setViewMode("list");
+      setDetailEventId(created.id);
+      setIsEditing(false);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const onOpenDetail = (event: EventOption) => {
+    setDetailEventId(event.id);
+    setSelectedEventId(event.id);
+    setIsEditing(false);
+    setError(null);
+    setSavedMessage(null);
+  };
+
+  const onStartEdit = (event: EventOption) => {
+    setEditForm(eventToForm(event));
+    setIsEditing(true);
+    setError(null);
+    setSavedMessage(null);
+  };
+
+  const onSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detailEvent) return;
+    setError(null);
+    setSavedMessage(null);
+
+    const validationError = validateEventInput(editForm);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const updated = updateEvent(detailEvent.id, editForm);
+    if (!updated) {
+      setError("수정할 행사를 찾을 수 없습니다.");
+      return;
+    }
+
+    setIsEditing(false);
+    setSavedMessage(`${updated.name} 행사 정보가 수정되었습니다.`);
   };
 
   return (
@@ -129,6 +210,8 @@ export function EventManagementPage() {
             type="button"
             onClick={() => {
               setViewMode("list");
+              setDetailEventId(null);
+              setIsEditing(false);
               setError(null);
             }}
             className={[
@@ -145,6 +228,8 @@ export function EventManagementPage() {
             type="button"
             onClick={() => {
               setViewMode("create");
+              setDetailEventId(null);
+              setIsEditing(false);
               setSavedMessage(null);
             }}
             className={[
@@ -307,13 +392,186 @@ export function EventManagementPage() {
             </button>
           </div>
         </form>
+      ) : detailEvent ? (
+        <section className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailEventId(null);
+                  setIsEditing(false);
+                  setError(null);
+                }}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                목록으로
+              </button>
+              <h2 className="mt-4 break-words text-xl font-semibold text-zinc-900 dark:text-zinc-100">
+                {detailEvent.name}
+              </h2>
+              <div className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                {formatDateRange(detailEvent.startDate, detailEvent.endDate)}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setError(null);
+                  }}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  <X className="h-4 w-4" />
+                  취소
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onStartEdit(detailEvent)}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  수정
+                </button>
+              )}
+            </div>
+          </div>
+
+          {isEditing ? (
+            <form onSubmit={onSaveEdit} className="mt-6 space-y-4">
+              <div>
+                <label className={labelClasses()} htmlFor="edit-event-name">
+                  행사명
+                </label>
+                <input
+                  id="edit-event-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((current) => ({ ...current, name: e.target.value }))}
+                  className={inputBaseClasses()}
+                />
+              </div>
+
+              <div>
+                <label className={labelClasses()} htmlFor="edit-event-hall">
+                  전시관 명
+                </label>
+                <div className="relative mt-1">
+                  <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    id="edit-event-hall"
+                    value={editForm.exhibitionHallName}
+                    onChange={(e) =>
+                      setEditForm((current) => ({ ...current, exhibitionHallName: e.target.value }))
+                    }
+                    className={[inputBaseClasses(), "pl-10"].join(" ")}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClasses()} htmlFor="edit-event-location">
+                  위치
+                </label>
+                <div className="relative mt-1">
+                  <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    id="edit-event-location"
+                    value={editForm.location}
+                    onChange={(e) => setEditForm((current) => ({ ...current, location: e.target.value }))}
+                    className={[inputBaseClasses(), "pl-10"].join(" ")}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={labelClasses()} htmlFor="edit-event-start-date">
+                    시작일
+                  </label>
+                  <input
+                    id="edit-event-start-date"
+                    type="date"
+                    value={editForm.startDate}
+                    onChange={(e) => setEditForm((current) => ({ ...current, startDate: e.target.value }))}
+                    className={inputBaseClasses()}
+                  />
+                </div>
+                <div>
+                  <label className={labelClasses()} htmlFor="edit-event-end-date">
+                    종료일
+                  </label>
+                  <input
+                    id="edit-event-end-date"
+                    type="date"
+                    value={editForm.endDate}
+                    onChange={(e) => setEditForm((current) => ({ ...current, endDate: e.target.value }))}
+                    className={inputBaseClasses()}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClasses()} htmlFor="edit-event-organizer">
+                  주최측명
+                </label>
+                <div className="relative mt-1">
+                  <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    id="edit-event-organizer"
+                    value={editForm.organizerName}
+                    onChange={(e) => setEditForm((current) => ({ ...current, organizerName: e.target.value }))}
+                    className={[inputBaseClasses(), "pl-10"].join(" ")}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClasses()} htmlFor="edit-event-memo">
+                  비고/메모
+                </label>
+                <div className="relative mt-1">
+                  <MessageSquareText className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-zinc-400" />
+                  <textarea
+                    id="edit-event-memo"
+                    value={editForm.memo}
+                    onChange={(e) => setEditForm((current) => ({ ...current, memo: e.target.value }))}
+                    className={[textareaBaseClasses(), "pl-10"].join(" ")}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                <Save className="h-4 w-4" />
+                수정 저장
+              </button>
+            </form>
+          ) : (
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              <DetailRow label="전시관 명" value={detailEvent.exhibitionHallName} />
+              <DetailRow label="주최측명" value={detailEvent.organizerName} />
+              <DetailRow label="위치" value={detailEvent.location} />
+              <DetailRow label="기간" value={formatDateRange(detailEvent.startDate, detailEvent.endDate)} />
+              <div className="md:col-span-2">
+                <DetailRow label="비고/메모" value={detailEvent.memo} />
+              </div>
+            </div>
+          )}
+        </section>
       ) : (
         <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">등록된 행사</div>
               <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                총 {sortedEvents.length}개 행사
+                행사 카드를 선택하면 상세 정보를 크게 확인할 수 있습니다.
               </div>
             </div>
             <span className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-semibold text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
@@ -321,14 +579,14 @@ export function EventManagementPage() {
             </span>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {sortedEvents.map((event) => {
               const selected = selectedEvent?.id === event.id;
               return (
                 <button
                   key={event.id}
                   type="button"
-                  onClick={() => setSelectedEventId(event.id)}
+                  onClick={() => onOpenDetail(event)}
                   className={[
                     "w-full rounded-xl border p-4 text-left shadow-sm transition",
                     selected
@@ -359,16 +617,6 @@ export function EventManagementPage() {
                       <span className="font-semibold text-zinc-900 dark:text-zinc-100">주최</span>{" "}
                       <span className="break-words">{event.organizerName ?? "-"}</span>
                     </div>
-                    <div className="min-w-0 sm:col-span-2">
-                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">위치</span>{" "}
-                      <span className="break-words">{event.location ?? "-"}</span>
-                    </div>
-                    {event.memo ? (
-                      <div className="min-w-0 sm:col-span-2">
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">비고</span>{" "}
-                        <span className="break-words">{event.memo}</span>
-                      </div>
-                    ) : null}
                   </div>
                 </button>
               );

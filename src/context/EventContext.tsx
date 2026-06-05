@@ -30,6 +30,7 @@ type EventContextValue = {
   setSelectedEventId: (eventId: string) => void;
   selectedEvent?: EventOption;
   addEvent: (input: EventInput) => Promise<EventOption>;
+  updateEvent: (eventId: string, input: EventInput) => EventOption | null;
 };
 
 const EventContext = createContext<EventContextValue | null>(null);
@@ -217,14 +218,46 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     return nextEvent;
   }, []);
 
+  const updateEvent = useCallback((eventId: string, input: EventInput) => {
+    let updatedEvent: EventOption | null = null;
+    setEvents((current) => {
+      const next = current.map((event) => {
+        if (event.id !== eventId) return event;
+        updatedEvent = {
+          ...event,
+          name: input.name.trim(),
+          exhibitionHallName: input.exhibitionHallName.trim(),
+          location: input.location.trim(),
+          startDate: input.startDate,
+          endDate: input.endDate,
+          organizerName: input.organizerName.trim(),
+          memo: input.memo.trim(),
+        };
+        return updatedEvent;
+      });
+
+      if (!updatedEvent) return current;
+
+      const localEvents = loadStoredEvents(LOCAL_EVENTS_KEY);
+      const localMeta = mergeEvents(loadStoredEvents(LOCAL_EVENT_META_KEY), [updatedEvent]);
+      if (localEvents.some((event) => event.id === eventId)) {
+        saveStoredEvents(LOCAL_EVENTS_KEY, mergeEvents(localEvents, [updatedEvent]));
+      }
+      saveStoredEvents(LOCAL_EVENT_META_KEY, localMeta);
+      return next;
+    });
+
+    return updatedEvent;
+  }, []);
+
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId),
     [events, selectedEventId],
   );
 
   const value = useMemo<EventContextValue>(
-    () => ({ events, selectedEventId, setSelectedEventId, selectedEvent, addEvent }),
-    [events, selectedEventId, selectedEvent, addEvent],
+    () => ({ events, selectedEventId, setSelectedEventId, selectedEvent, addEvent, updateEvent }),
+    [events, selectedEventId, selectedEvent, addEvent, updateEvent],
   );
 
   return <EventContext.Provider value={value}>{children}</EventContext.Provider>;
