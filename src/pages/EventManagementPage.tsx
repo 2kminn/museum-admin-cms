@@ -68,7 +68,11 @@ function validateEventInput(input: EventInput) {
   return null;
 }
 
-function DetailRow({ label, value }: { label: string; value?: string }) {
+function errorMessage(error: unknown) {
+  return error instanceof Error && error.message ? error.message : "요청 처리 중 오류가 발생했습니다.";
+}
+
+function DetailRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
       <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{label}</div>
@@ -150,6 +154,8 @@ export function EventManagementPage() {
       setViewMode("list");
       setDetailEventId(created.id);
       setIsEditing(false);
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -170,7 +176,7 @@ export function EventManagementPage() {
     setSavedMessage(null);
   };
 
-  const onSaveEdit = (e: React.FormEvent) => {
+  const onSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detailEvent) return;
     setError(null);
@@ -182,14 +188,21 @@ export function EventManagementPage() {
       return;
     }
 
-    const updated = updateEvent(detailEvent.id, editForm);
-    if (!updated) {
-      setError("수정할 행사를 찾을 수 없습니다.");
-      return;
-    }
+    setIsSaving(true);
+    try {
+      const updated = await updateEvent(detailEvent.id, editForm);
+      if (!updated) {
+        setError("수정할 행사를 찾을 수 없습니다.");
+        return;
+      }
 
-    setIsEditing(false);
-    setSavedMessage(`${updated.name} 행사 정보가 수정되었습니다.`);
+      setIsEditing(false);
+      setSavedMessage(`${updated.name} 행사 정보가 수정되었습니다.`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -547,10 +560,11 @@ export function EventManagementPage() {
 
               <button
                 type="submit"
+                disabled={isSaving}
                 className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
                 <Save className="h-4 w-4" />
-                수정 저장
+                {isSaving ? "저장 중" : "수정 저장"}
               </button>
             </form>
           ) : (

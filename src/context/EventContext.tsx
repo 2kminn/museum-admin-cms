@@ -1,17 +1,24 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { apiCreateEvent, apiCreateVenueForEvent, apiListEvents } from "../lib/api";
+import {
+  apiCreateEvent,
+  apiListEvents,
+  apiUpdateEvent,
+  type ApiEvent,
+  type ApiEventInput,
+} from "../lib/api";
 
 export type EventOption = {
   id: string;
   name: string;
-  slug?: string;
-  exhibitionHallName?: string;
-  location?: string;
-  startDate?: string;
-  endDate?: string;
-  organizerName?: string;
-  memo?: string;
+  slug: string;
+  exhibitionHallName: string | null;
+  location: string | null;
+  startDate: string;
+  endDate: string;
+  organizerName: string | null;
+  memo: string | null;
+  venueCount: number;
 };
 
 export type EventInput = {
@@ -30,87 +37,55 @@ type EventContextValue = {
   setSelectedEventId: (eventId: string) => void;
   selectedEvent?: EventOption;
   addEvent: (input: EventInput) => Promise<EventOption>;
-  updateEvent: (eventId: string, input: EventInput) => EventOption | null;
+  updateEvent: (eventId: string, input: EventInput) => Promise<EventOption | null>;
 };
 
 const EventContext = createContext<EventContextValue | null>(null);
 const STORAGE_KEY = "artar_admin:selected_event_id";
-const LOCAL_EVENTS_KEY = "artar_admin:custom_events";
-const LOCAL_EVENT_META_KEY = "artar_admin:event_meta";
 
-const DEFAULT_EVENTS: EventOption[] = [
-  {
-    id: "busan-night-wave-2026",
-    name: "부산 나이트 웨이브 2026",
-    exhibitionHallName: "부산시립미술관",
-    location: "부산 해운대구 APEC로 58",
-    startDate: "2026-03-18",
-    endDate: "2026-03-24",
-    organizerName: "ArtAR Busan",
-    memo: "대표 테스트 행사",
-  },
-  {
-    id: "gwangalli-ar-festival",
-    name: "광안리 AR 페스티벌",
-    exhibitionHallName: "광안리 해변",
-    location: "부산 수영구 광안해변로",
-    startDate: "2026-04-10",
-    endDate: "2026-04-19",
-    organizerName: "ArtAR Busan",
-    memo: "야외 전시 기준 샘플",
-  },
-  {
-    id: "haeundae-media-walk",
-    name: "해운대 미디어 워크",
-    exhibitionHallName: "해운대 문화회관",
-    location: "부산 해운대구 양운로 97",
-    startDate: "2026-05-01",
-    endDate: "2026-05-10",
-    organizerName: "ArtAR Busan",
-    memo: "실내 동선형 전시 샘플",
-  },
-];
-
-function loadStoredEvents(key: string): EventOption[] {
-  const raw = window.localStorage.getItem(key);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as EventOption[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((event) => event && typeof event.id === "string" && typeof event.name === "string");
-  } catch {
-    return [];
-  }
-}
-
-function saveStoredEvents(key: string, events: EventOption[]) {
-  window.localStorage.setItem(key, JSON.stringify(events));
-}
-
-function mergeEvents(...groups: EventOption[][]) {
-  const merged = new Map<string, EventOption>();
-  groups.flat().forEach((event) => {
-    const previous = merged.get(event.id);
-    merged.set(event.id, { ...previous, ...event });
-  });
-  return Array.from(merged.values());
+function mapApiEvent(event: ApiEvent): EventOption {
+  return {
+    id: event.id,
+    name: event.name,
+    slug: event.slug,
+    exhibitionHallName: event.exhibition_hall_name,
+    location: event.location,
+    startDate: event.start_date,
+    endDate: event.end_date,
+    organizerName: event.organizer_name,
+    memo: event.memo,
+    venueCount: event.venue_count,
+  };
 }
 
 function slugify(value: string) {
   const slug = value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣]+/g, "-")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return slug || `event-${Date.now()}`;
 }
 
+function toApiEventInput(input: EventInput, slug: string): ApiEventInput {
+  return {
+    name: input.name.trim(),
+    slug,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    exhibitionHallName: input.exhibitionHallName.trim(),
+    location: input.location.trim(),
+    organizerName: input.organizerName.trim(),
+    memo: input.memo.trim(),
+  };
+}
+
 export function EventProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [selectedEventId, setSelectedEventIdState] = useState(DEFAULT_EVENTS[0]?.id ?? "");
-  const [events, setEvents] = useState<EventOption[]>(() =>
-    mergeEvents(DEFAULT_EVENTS, loadStoredEvents(LOCAL_EVENTS_KEY), loadStoredEvents(LOCAL_EVENT_META_KEY)),
-  );
+  const [selectedEventId, setSelectedEventIdState] = useState("");
+  const [events, setEvents] = useState<EventOption[]>([]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
@@ -121,7 +96,8 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     if (!user) {
-      setEvents(mergeEvents(DEFAULT_EVENTS, loadStoredEvents(LOCAL_EVENTS_KEY), loadStoredEvents(LOCAL_EVENT_META_KEY)));
+      setEvents([]);
+      setSelectedEventIdState("");
       return () => {
         cancelled = true;
       };
@@ -129,31 +105,17 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
     apiListEvents()
       .then((items) => {
-        if (cancelled || items.length === 0) return;
-        const localEvents = loadStoredEvents(LOCAL_EVENTS_KEY);
-        const localMeta = loadStoredEvents(LOCAL_EVENT_META_KEY);
-        const next = mergeEvents(
-          items.map((event) => ({
-            id: event.id,
-            name: event.name,
-            slug: event.slug,
-            startDate: event.start_date,
-            endDate: event.end_date,
-          })),
-          localEvents,
-          localMeta,
-        );
+        if (cancelled) return;
+        const next = items.map(mapApiEvent);
         setEvents(next);
-        setSelectedEventIdState((current) =>
-          next.some((event) => event.id === current) ? current : next[0]?.id ?? "",
-        );
+        setSelectedEventIdState((current) => {
+          const saved = window.localStorage.getItem(STORAGE_KEY);
+          const preferred = current || saved || "";
+          return next.some((event) => event.id === preferred) ? preferred : next[0]?.id ?? "";
+        });
       })
       .catch(() => {
-        if (!cancelled) {
-          setEvents(
-            mergeEvents(DEFAULT_EVENTS, loadStoredEvents(LOCAL_EVENTS_KEY), loadStoredEvents(LOCAL_EVENT_META_KEY)),
-          );
-        }
+        if (!cancelled) setEvents([]);
       });
 
     return () => {
@@ -161,94 +123,31 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user]);
 
-  const setSelectedEventId = (eventId: string) => {
+  const setSelectedEventId = useCallback((eventId: string) => {
     setSelectedEventIdState(eventId);
     window.localStorage.setItem(STORAGE_KEY, eventId);
-  };
-
-  const addEvent = useCallback(async (input: EventInput) => {
-    const slug = slugify(input.name);
-    const localEvent: EventOption = {
-      id: `${slug}-${Date.now()}`,
-      slug,
-      name: input.name.trim(),
-      exhibitionHallName: input.exhibitionHallName.trim(),
-      location: input.location.trim(),
-      startDate: input.startDate,
-      endDate: input.endDate,
-      organizerName: input.organizerName.trim(),
-      memo: input.memo.trim(),
-    };
-
-    let nextEvent = localEvent;
-    try {
-      const created = await apiCreateEvent({
-        name: localEvent.name,
-        slug,
-        startDate: localEvent.startDate ?? "",
-        endDate: localEvent.endDate ?? "",
-      });
-      nextEvent = {
-        ...localEvent,
-        id: created.id,
-        slug: created.slug,
-        name: created.name,
-        startDate: created.start_date,
-        endDate: created.end_date,
-      };
-
-      if (localEvent.exhibitionHallName || localEvent.location) {
-        await apiCreateVenueForEvent({
-          eventId: created.id,
-          name: localEvent.exhibitionHallName || localEvent.name,
-          address: localEvent.location ?? "",
-        }).catch(() => undefined);
-      }
-    } catch {
-      nextEvent = localEvent;
-    }
-
-    const localEvents = mergeEvents(loadStoredEvents(LOCAL_EVENTS_KEY), [nextEvent]);
-    const localMeta = mergeEvents(loadStoredEvents(LOCAL_EVENT_META_KEY), [nextEvent]);
-    saveStoredEvents(LOCAL_EVENTS_KEY, localEvents);
-    saveStoredEvents(LOCAL_EVENT_META_KEY, localMeta);
-
-    setEvents((current) => mergeEvents(current, [nextEvent]));
-    setSelectedEventId(nextEvent.id);
-    return nextEvent;
   }, []);
 
-  const updateEvent = useCallback((eventId: string, input: EventInput) => {
-    let updatedEvent: EventOption | null = null;
-    setEvents((current) => {
-      const next = current.map((event) => {
-        if (event.id !== eventId) return event;
-        updatedEvent = {
-          ...event,
-          name: input.name.trim(),
-          exhibitionHallName: input.exhibitionHallName.trim(),
-          location: input.location.trim(),
-          startDate: input.startDate,
-          endDate: input.endDate,
-          organizerName: input.organizerName.trim(),
-          memo: input.memo.trim(),
-        };
-        return updatedEvent;
-      });
+  const addEvent = useCallback(
+    async (input: EventInput) => {
+      const created = mapApiEvent(await apiCreateEvent(toApiEventInput(input, slugify(input.name))));
+      setEvents((current) => [created, ...current.filter((event) => event.id !== created.id)]);
+      setSelectedEventId(created.id);
+      return created;
+    },
+    [setSelectedEventId],
+  );
 
-      if (!updatedEvent) return current;
+  const updateEvent = useCallback(async (eventId: string, input: EventInput) => {
+    const currentEvent = events.find((event) => event.id === eventId);
+    if (!currentEvent) return null;
 
-      const localEvents = loadStoredEvents(LOCAL_EVENTS_KEY);
-      const localMeta = mergeEvents(loadStoredEvents(LOCAL_EVENT_META_KEY), [updatedEvent]);
-      if (localEvents.some((event) => event.id === eventId)) {
-        saveStoredEvents(LOCAL_EVENTS_KEY, mergeEvents(localEvents, [updatedEvent]));
-      }
-      saveStoredEvents(LOCAL_EVENT_META_KEY, localMeta);
-      return next;
-    });
-
-    return updatedEvent;
-  }, []);
+    const updated = mapApiEvent(
+      await apiUpdateEvent(eventId, toApiEventInput(input, currentEvent.slug || slugify(input.name))),
+    );
+    setEvents((current) => current.map((event) => (event.id === eventId ? updated : event)));
+    return updated;
+  }, [events]);
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId),
@@ -257,7 +156,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<EventContextValue>(
     () => ({ events, selectedEventId, setSelectedEventId, selectedEvent, addEvent, updateEvent }),
-    [events, selectedEventId, selectedEvent, addEvent, updateEvent],
+    [events, selectedEventId, setSelectedEventId, selectedEvent, addEvent, updateEvent],
   );
 
   return <EventContext.Provider value={value}>{children}</EventContext.Provider>;

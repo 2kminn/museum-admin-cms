@@ -48,9 +48,13 @@ export type ApiEvent = {
   start_date: string;
   end_date: string;
   is_public: boolean;
+  exhibition_hall_name: string | null;
+  location: string | null;
+  organizer_name: string | null;
+  memo: string | null;
   created_at: string;
-  updated_at?: string;
-  venue_count?: number;
+  updated_at: string;
+  venue_count: number;
 };
 
 export type ApiVenue = {
@@ -310,23 +314,54 @@ export async function apiListEvents() {
   return unwrapList(body);
 }
 
-export async function apiCreateEvent(input: {
+export type ApiEventInput = {
   name: string;
   slug: string;
   startDate: string;
   endDate: string;
-}) {
+  exhibitionHallName: string;
+  location: string;
+  organizerName: string;
+  memo: string;
+};
+
+function toApiEventPayload(input: ApiEventInput) {
+  return {
+    name: input.name,
+    slug: input.slug,
+    start_date: input.startDate,
+    end_date: input.endDate,
+    is_public: true,
+    exhibition_hall_name: input.exhibitionHallName,
+    location: input.location,
+    organizer_name: input.organizerName,
+    memo: input.memo || null,
+  };
+}
+
+export async function apiCreateEvent(input: ApiEventInput) {
   const body = await request<ApiEnvelope<ApiEvent>>("/api/v1/admin/events", {
     method: "POST",
-    body: JSON.stringify({
-      name: input.name,
-      slug: input.slug,
-      start_date: input.startDate,
-      end_date: input.endDate,
-      is_public: true,
-    }),
+    body: JSON.stringify(toApiEventPayload(input)),
   });
   return body.data;
+}
+
+export async function apiGetEvent(eventId: string) {
+  const body = await request<ApiEnvelope<ApiEvent>>(`/api/v1/admin/events/${eventId}`);
+  return body.data;
+}
+
+export async function apiUpdateEvent(eventId: string, input: ApiEventInput) {
+  const body = await request<ApiEnvelope<ApiEvent>>(`/api/v1/admin/events/${eventId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiEventPayload(input)),
+  });
+  return body.data;
+}
+
+export async function apiDeleteEvent(eventId: string) {
+  await request<void>(`/api/v1/admin/events/${eventId}`, { method: "DELETE" });
 }
 
 export async function apiListVenues(eventId: string) {
