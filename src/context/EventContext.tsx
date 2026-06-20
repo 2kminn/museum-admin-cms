@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useAuth } from "../auth/AuthContext";
 import {
   apiCreateEvent,
+  apiDeleteEvent,
   apiListEvents,
   apiUpdateEvent,
   type ApiEvent,
@@ -38,6 +39,7 @@ type EventContextValue = {
   selectedEvent?: EventOption;
   addEvent: (input: EventInput) => Promise<EventOption>;
   updateEvent: (eventId: string, input: EventInput) => Promise<EventOption | null>;
+  deleteEvent: (eventId: string) => Promise<void>;
 };
 
 const EventContext = createContext<EventContextValue | null>(null);
@@ -125,7 +127,8 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   const setSelectedEventId = useCallback((eventId: string) => {
     setSelectedEventIdState(eventId);
-    window.localStorage.setItem(STORAGE_KEY, eventId);
+    if (eventId) window.localStorage.setItem(STORAGE_KEY, eventId);
+    else window.localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   const addEvent = useCallback(
@@ -149,14 +152,30 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     return updated;
   }, [events]);
 
+  const deleteEvent = useCallback(async (eventId: string) => {
+    await apiDeleteEvent(eventId);
+
+    const nextEvents = events.filter((event) => event.id !== eventId);
+    setEvents(nextEvents);
+    if (selectedEventId === eventId) setSelectedEventId(nextEvents[0]?.id ?? "");
+  }, [events, selectedEventId, setSelectedEventId]);
+
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId),
     [events, selectedEventId],
   );
 
   const value = useMemo<EventContextValue>(
-    () => ({ events, selectedEventId, setSelectedEventId, selectedEvent, addEvent, updateEvent }),
-    [events, selectedEventId, setSelectedEventId, selectedEvent, addEvent, updateEvent],
+    () => ({
+      events,
+      selectedEventId,
+      setSelectedEventId,
+      selectedEvent,
+      addEvent,
+      updateEvent,
+      deleteEvent,
+    }),
+    [events, selectedEventId, setSelectedEventId, selectedEvent, addEvent, updateEvent, deleteEvent],
   );
 
   return <EventContext.Provider value={value}>{children}</EventContext.Provider>;

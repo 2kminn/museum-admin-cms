@@ -10,9 +10,11 @@ import {
   MessageSquareText,
   Plus,
   Save,
+  Trash2,
   X,
   UserRound,
 } from "lucide-react";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { useEventContext, type EventInput, type EventOption } from "../context/EventContext";
 
 type ViewMode = "list" | "create";
@@ -84,7 +86,8 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 export function EventManagementPage() {
-  const { events, selectedEvent, setSelectedEventId, addEvent, updateEvent } = useEventContext();
+  const { events, selectedEvent, setSelectedEventId, addEvent, updateEvent, deleteEvent } =
+    useEventContext();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [name, setName] = useState("");
   const [exhibitionHallName, setExhibitionHallName] = useState("");
@@ -99,6 +102,8 @@ export function EventManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<EventOption | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const sortedEvents = useMemo(
     () =>
@@ -205,8 +210,45 @@ export function EventManagementPage() {
     }
   };
 
+  const onConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setError(null);
+    setSavedMessage(null);
+    setIsDeleting(true);
+
+    try {
+      await deleteEvent(deleteTarget.id);
+      setDetailEventId(null);
+      setIsEditing(false);
+      setDeleteTarget(null);
+      setSavedMessage(`${deleteTarget.name} 행사가 삭제되었습니다.`);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="행사 삭제"
+        message={
+          deleteTarget
+            ? `${deleteTarget.name} 행사를 삭제하시겠습니까? 연결된 장소와 작품 데이터도 함께 영향을 받을 수 있습니다.`
+            : ""
+        }
+        confirmText={isDeleting ? "삭제 중" : "삭제"}
+        cancelText="취소"
+        onCancel={() => {
+          if (!isDeleting) setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!isDeleting) void onConfirmDelete();
+        }}
+      />
+
       <div>
         <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">행사 관리</h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
@@ -443,14 +485,24 @@ export function EventManagementPage() {
                   취소
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => onStartEdit(detailEvent)}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  <Edit3 className="h-4 w-4" />
-                  수정
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(detailEvent)}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50 dark:border-rose-900/50 dark:bg-zinc-950 dark:text-rose-200 dark:hover:bg-rose-950/30"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    삭제
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStartEdit(detailEvent)}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                    수정
+                  </button>
+                </>
               )}
             </div>
           </div>
