@@ -4,6 +4,7 @@ import { QRCodeCanvas } from "qrcode.react";
 
 type ArtworkQrCardProps = {
   title: string;
+  artist?: string | null;
   code: number | null;
   qrUrl: string | null;
   compact?: boolean;
@@ -27,9 +28,10 @@ function fileSafeName(value: string) {
   return normalized || "artwork";
 }
 
-export function ArtworkQrCard({ title, code, qrUrl, compact = false }: ArtworkQrCardProps) {
+export function ArtworkQrCard({ title, artist, code, qrUrl, compact = false }: ArtworkQrCardProps) {
   const printCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const captionTitle = title.trim() || "제목 없음";
+  const captionArtist = artist?.trim() || "작가 미상";
 
   const getPngUrl = () => printCanvasRef.current?.toDataURL("image/png") ?? null;
 
@@ -63,6 +65,8 @@ export function ArtworkQrCard({ title, code, qrUrl, compact = false }: ArtworkQr
       img { width: 512px; height: 512px; image-rendering: pixelated; }
       h1 { margin: 20px 0 8px; font-size: 28px; line-height: 1.25; }
       p { margin: 0; font-size: 18px; color: #52525b; }
+      .artist { margin-top: 6px; font-size: 20px; color: #18181b; }
+      .code { margin-top: 12px; }
       @media print { main { padding: 0; } }
     </style>
   </head>
@@ -71,7 +75,8 @@ export function ArtworkQrCard({ title, code, qrUrl, compact = false }: ArtworkQr
       <section class="label">
         <img src="${pngUrl}" alt="작품 QR 코드" />
         <h1>${escapeHtml(captionTitle)}</h1>
-        <p>code: ${code ?? "-"}</p>
+        <p class="artist">${escapeHtml(captionArtist)}</p>
+        <p class="code">code: ${code ?? "-"}</p>
       </section>
     </main>
     <script>
@@ -108,6 +113,12 @@ export function ArtworkQrCard({ title, code, qrUrl, compact = false }: ArtworkQr
           <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
             <QrCode className="h-4 w-4" />
             작품 QR
+          </div>
+          <div className="mt-1 truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            {captionTitle}
+          </div>
+          <div className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
+            {captionArtist}
           </div>
           <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             code:{" "}

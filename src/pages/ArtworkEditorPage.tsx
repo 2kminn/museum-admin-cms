@@ -38,6 +38,24 @@ function statusLabel(status: ArtworkStatus) {
   return "초안";
 }
 
+function saveErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message === "UNSUPPORTED_UPLOAD_TYPE") {
+    return "지원하지 않는 파일 형식입니다. JPG, PNG, WebP, GIF 이미지만 업로드해 주세요.";
+  }
+  if (message.startsWith("SIGNED_URL_FAILED:")) {
+    return "이미지 업로드 URL을 발급받지 못했습니다. 로그인 상태와 백엔드 응답을 확인해 주세요.";
+  }
+  if (message.startsWith("STORAGE_UPLOAD_FETCH_FAILED:")) {
+    return "이미지 스토리지 업로드가 브라우저에서 차단됐습니다. 스토리지 CORS 설정을 확인해 주세요.";
+  }
+  if (message.startsWith("UPLOAD_FAILED_")) {
+    return "이미지 업로드에 실패했습니다. 파일 크기와 네트워크 상태를 확인해 주세요.";
+  }
+  if (message) return `저장 실패: ${message}`;
+  return "저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요.";
+}
+
 export function ArtworkEditorPage({ mode }: { mode: Mode }) {
   const { selectedEvent } = useEventContext();
   const eventId = selectedEvent?.id ?? "";
@@ -184,8 +202,10 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       console.log("[ArtworkEditor] save payload", savedRecord);
       showNotice({ tone: "success", message: "저장 완료" });
       window.setTimeout(() => navigate("/cms/locations"), 700);
-    } catch {
-      showNotice({ tone: "error", message: "저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요." });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[ArtworkEditor] save failed", error);
+      showNotice({ tone: "error", message: saveErrorMessage(error) });
     } finally {
       setIsSaving(false);
     }
@@ -303,6 +323,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
             <div className="mt-3">
               <ArtworkQrCard
                 title={localized.ko.title}
+                artist={artist}
                 code={currentArtwork?.code ?? null}
                 qrUrl={currentArtwork?.qrUrl ?? null}
               />
@@ -448,7 +469,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                         등록된 작품 이미지
                       </div>
                       <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        아래에서 새 PNG/JPG/PDF 파일을 선택하면 현재 썸네일을 교체합니다.
+                        아래에서 새 JPG/PNG/WebP/GIF 이미지를 선택하면 현재 썸네일을 교체합니다.
                       </div>
                       {currentArtwork?.media.artworkImageName ? (
                         <div className="mt-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">

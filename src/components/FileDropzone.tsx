@@ -27,9 +27,25 @@ function isPdfFile(file: File) {
   return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 }
 
+function fileMatchesAccept(file: File, accept?: string) {
+  if (!accept) return true;
+
+  const lowerName = file.name.toLowerCase();
+  return accept
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+    .some((part) => {
+      if (part.startsWith(".")) return lowerName.endsWith(part);
+      if (part.endsWith("/*")) return file.type.toLowerCase().startsWith(part.slice(0, -1));
+      return file.type.toLowerCase() === part;
+    });
+}
+
 export function FileDropzone({ label, accept, multiple, value, onChange }: Props) {
   const inputId = useId();
   const [isDragging, setIsDragging] = useState(false);
+  const [rejectedMessage, setRejectedMessage] = useState<string | null>(null);
 
   const previews = useMemo(() => {
     return value.map((file) => {
@@ -45,7 +61,14 @@ export function FileDropzone({ label, accept, multiple, value, onChange }: Props
   }, [previews]);
 
   const addFiles = (files: File[]) => {
-    const next = multiple ? [...value, ...files] : files.slice(0, 1);
+    const accepted = files.filter((file) => fileMatchesAccept(file, accept));
+    const rejected = files.filter((file) => !fileMatchesAccept(file, accept));
+    setRejectedMessage(
+      rejected.length > 0 ? `허용되지 않는 파일 형식입니다: ${rejected.map((file) => file.name).join(", ")}` : null,
+    );
+    if (accepted.length === 0) return;
+
+    const next = multiple ? [...value, ...accepted] : accepted.slice(0, 1);
     onChange(next);
   };
 
@@ -96,6 +119,11 @@ export function FileDropzone({ label, accept, multiple, value, onChange }: Props
             <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               {multiple ? "여러 파일 가능" : "1개 파일"} · {accept ? accept : "모든 파일"}
             </div>
+            {rejectedMessage ? (
+              <div className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
+                {rejectedMessage}
+              </div>
+            ) : null}
           </div>
         </div>
         <input

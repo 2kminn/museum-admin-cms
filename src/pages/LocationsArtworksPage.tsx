@@ -48,6 +48,24 @@ function statusLabel(status: ArtworkStatus) {
   return "초안";
 }
 
+function saveErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message === "UNSUPPORTED_UPLOAD_TYPE") {
+    return "지원하지 않는 파일 형식입니다. JPG, PNG, WebP, GIF 이미지만 업로드해 주세요.";
+  }
+  if (message.startsWith("SIGNED_URL_FAILED:")) {
+    return "이미지 업로드 URL을 발급받지 못했습니다. 로그인 상태와 백엔드 응답을 확인해 주세요.";
+  }
+  if (message.startsWith("STORAGE_UPLOAD_FETCH_FAILED:")) {
+    return "이미지 스토리지 업로드가 브라우저에서 차단됐습니다. 스토리지 CORS 설정을 확인해 주세요.";
+  }
+  if (message.startsWith("UPLOAD_FAILED_")) {
+    return "이미지 업로드에 실패했습니다. 파일 크기와 네트워크 상태를 확인해 주세요.";
+  }
+  if (message) return `저장 실패: ${message}`;
+  return "저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요.";
+}
+
 export function LocationsArtworksPage() {
   const { selectedEvent } = useEventContext();
   const eventId = selectedEvent?.id ?? "";
@@ -118,7 +136,7 @@ export function LocationsArtworksPage() {
       .filter((a) => {
         if (statusFilter !== "all" && a.status !== statusFilter) return false;
         if (!q) return true;
-        const hay = `${a.id} ${a.localized.ko.title}`.toLowerCase();
+        const hay = `${a.id} ${a.localized.ko.title} ${a.artist ?? ""}`.toLowerCase();
         return hay.includes(q);
       })
       .sort((a, b) => {
@@ -252,8 +270,10 @@ export function LocationsArtworksPage() {
       showNotice({ tone: "success", message: "저장 완료" });
       resetForm();
       setTab("list");
-    } catch {
-      showNotice({ tone: "error", message: "저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요." });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[ArtworkManagement] save failed", error);
+      showNotice({ tone: "error", message: saveErrorMessage(error) });
     } finally {
       setIsSaving(false);
     }
@@ -343,7 +363,7 @@ export function LocationsArtworksPage() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                        placeholder="작품명(KR) 또는 ID 검색"
+                        placeholder="작품명(KR), 작가명 또는 ID 검색"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -425,6 +445,9 @@ export function LocationsArtworksPage() {
                                 <div className="font-semibold text-zinc-900 dark:text-zinc-100">
                                   {item.localized.ko.title}
                                 </div>
+                                <div className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                  {item.artist || "작가 미상"}
+                                </div>
                                 <div className="text-xs text-zinc-500 dark:text-zinc-400">
                                   ID: {item.id}
                                 </div>
@@ -440,6 +463,7 @@ export function LocationsArtworksPage() {
                                   {item.qrUrl ? (
                                     <ArtworkQrCard
                                       title={item.localized.ko.title}
+                                      artist={item.artist}
                                       code={item.code}
                                       qrUrl={item.qrUrl}
                                       compact
@@ -606,6 +630,7 @@ export function LocationsArtworksPage() {
                       <div className="mt-3">
                         <ArtworkQrCard
                           title={localized.ko.title}
+                          artist={artist}
                           code={editingArtwork?.code ?? null}
                           qrUrl={editingArtwork?.qrUrl ?? null}
                         />
@@ -733,7 +758,7 @@ export function LocationsArtworksPage() {
                               등록된 작품 이미지
                             </div>
                             <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                              아래에서 새 PNG/JPG/PDF 파일을 선택하면 현재 썸네일을 교체합니다.
+                              아래에서 새 JPG/PNG/WebP/GIF 이미지를 선택하면 현재 썸네일을 교체합니다.
                             </div>
                             {editingArtwork?.media.artworkImageName ? (
                               <div className="mt-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">

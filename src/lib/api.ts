@@ -450,21 +450,31 @@ export async function apiGetArtwork(eventId: string, artworkId: string): Promise
 
 export async function apiUploadArtworkMedia(file: File) {
   const contentType = normalizeUploadContentType(file);
-  const signed = await request<ApiEnvelope<ApiSignedUrl>>("/api/v1/admin/upload/signed-url", {
-    method: "POST",
-    body: JSON.stringify({
-      filename: file.name,
-      content_type: contentType,
-    }),
-  });
+  let signed: ApiEnvelope<ApiSignedUrl>;
+  try {
+    signed = await request<ApiEnvelope<ApiSignedUrl>>("/api/v1/admin/upload/signed-url", {
+      method: "POST",
+      body: JSON.stringify({
+        filename: file.name,
+        content_type: contentType,
+      }),
+    });
+  } catch (error) {
+    throw new Error(`SIGNED_URL_FAILED:${error instanceof Error ? error.message : "UNKNOWN"}`);
+  }
 
-  const uploadRes = await fetch(signed.data.upload_url, {
-    method: "PUT",
-    headers: {
-      "content-type": signed.data.content_type,
-    },
-    body: file,
-  });
+  let uploadRes: Response;
+  try {
+    uploadRes = await fetch(signed.data.upload_url, {
+      method: "PUT",
+      headers: {
+        "content-type": signed.data.content_type,
+      },
+      body: file,
+    });
+  } catch (error) {
+    throw new Error(`STORAGE_UPLOAD_FETCH_FAILED:${error instanceof Error ? error.message : "UNKNOWN"}`);
+  }
 
   if (!uploadRes.ok) {
     throw new Error(`UPLOAD_FAILED_${uploadRes.status}`);
@@ -478,11 +488,13 @@ export async function apiSaveArtworkForEvent(
   artwork: ArtworkRecord,
   isEditing: boolean,
 ) {
+  const imageUrl =
+    artwork.mediaType === "image" ? artwork.mediaUrl || artwork.media.thumbnailDataUrl : null;
   const payload = {
     title_i18n: toApiI18nTitle(artwork.localized),
     description_i18n: toApiI18nDescription(artwork.localized),
     artist: artwork.artist?.trim() || null,
-    marker_image_url: null,
+    marker_image_url: imageUrl,
     media_url: artwork.mediaUrl || null,
     media_type: artwork.mediaType,
     sort_order: artwork.sortOrder,
