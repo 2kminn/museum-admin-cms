@@ -6,6 +6,7 @@ import { FileDropzone } from "../components/FileDropzone";
 import { ArtworkQrCard } from "../components/ArtworkQrCard";
 import { ArtworkMediaPreview } from "../components/ArtworkMediaPreview";
 import { CmsNotice, type CmsNoticeState } from "../components/CmsNotice";
+import { AdditionalMediaSlots } from "../components/AdditionalMediaSlots";
 import {
   createEmptyLocalizedText,
   generateArtworkId,
@@ -439,80 +440,29 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                 ) : null}
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-media-type">
-                    미디어 타입
-                  </label>
-                  <select
-                    id="artwork-media-type"
-                    value={mediaType}
-                    onChange={(e) => setMediaType(e.target.value as ArtworkMediaType)}
-                    className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                  >
-                    <option value="image">이미지</option>
-                    <option value="video">영상</option>
-                    <option value="audio">오디오</option>
-                    <option value="model3d">3D 모델</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-sort-order">
-                    정렬 순서
-                  </label>
-                  <input
-                    id="artwork-sort-order"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                    className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                  />
-                </div>
-              </div>
+              <AdditionalMediaSlots />
             </div>
           </div>
         </section>
 
+        {mode === "create" || !existingThumbnail ? (
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
-          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">미디어 업로드</div>
+          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">작품 이미지 등록</div>
           <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            이미지는 백엔드 업로드 API로 저장합니다. 영상/오디오/3D는 URL을 입력해 저장합니다.
+            이미지는 백엔드 업로드 API로 저장합니다.
           </div>
 
           <div className="mt-4 grid gap-4">
-            <div>
-              <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-media-url">
-                미디어 URL
-              </label>
-              <input
-                id="artwork-media-url"
-                value={mediaUrl}
-                onChange={(e) => setMediaUrl(e.target.value)}
-                className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                placeholder="https://..."
-              />
-              <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                파일을 업로드하면 업로드된 이미지 URL이 자동 저장됩니다.
-              </div>
-            </div>
-            {mode === "create" || !existingThumbnail ? (
-            <div>
-              <div className="mb-2 text-xs font-medium text-zinc-700">
-                {mode === "edit" && existingThumbnail ? "썸네일 수정" : "작품 이미지 등록"}
-              </div>
-              <FileDropzone
-                label={mode === "edit" && existingThumbnail ? "썸네일 수정" : "이미지를 드래그앤드롭 또는 클릭"}
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                multiple={false}
-                value={artworkImage ? [artworkImage] : []}
-                onChange={(files) => setArtworkImage(files[0] ?? null)}
-              />
-            </div>
-            ) : null}
+            <FileDropzone
+              label="이미지를 드래그앤드롭 또는 클릭"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple={false}
+              value={artworkImage ? [artworkImage] : []}
+              onChange={(files) => setArtworkImage(files[0] ?? null)}
+            />
           </div>
         </section>
+        ) : null}
       </form>
     </div>
   );
