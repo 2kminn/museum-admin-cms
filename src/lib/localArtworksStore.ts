@@ -36,8 +36,23 @@ export type ArtworkRecord = {
   updatedAt: string;
 };
 
+const USER_KEY = "artar_admin:api_user";
+
+function currentStorageOwnerId() {
+  const raw = window.localStorage.getItem(USER_KEY);
+  if (!raw) return "anonymous";
+  try {
+    const parsed = JSON.parse(raw) as { id?: unknown; email?: unknown };
+    if (typeof parsed.id === "string" && parsed.id.trim()) return parsed.id.trim();
+    if (typeof parsed.email === "string" && parsed.email.trim()) return parsed.email.trim();
+  } catch {
+    return "anonymous";
+  }
+  return "anonymous";
+}
+
 function storageKeyFor(eventId: string) {
-  return `artar_admin:artworks:${eventId}`;
+  return `artar_admin:artworks:${currentStorageOwnerId()}:${eventId}`;
 }
 
 export function createEmptyLocalizedText(): LocalizedText {

@@ -45,6 +45,10 @@ type EventContextValue = {
 const EventContext = createContext<EventContextValue | null>(null);
 const STORAGE_KEY = "artar_admin:selected_event_id";
 
+function storageKeyForUser(userId?: string) {
+  return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
+}
+
 function mapApiEvent(event: ApiEvent): EventOption {
   return {
     id: event.id,
@@ -90,11 +94,6 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [events, setEvents] = useState<EventOption[]>([]);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) setSelectedEventIdState(saved);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
 
     if (!user) {
@@ -105,16 +104,15 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
+    const savedForUser = window.localStorage.getItem(storageKeyForUser(user.id)) ?? "";
+    setSelectedEventIdState(savedForUser);
+
     apiListEvents()
       .then((items) => {
         if (cancelled) return;
         const next = items.map(mapApiEvent);
         setEvents(next);
-        setSelectedEventIdState((current) => {
-          const saved = window.localStorage.getItem(STORAGE_KEY);
-          const preferred = current || saved || "";
-          return next.some((event) => event.id === preferred) ? preferred : next[0]?.id ?? "";
-        });
+        setSelectedEventIdState(next.some((event) => event.id === savedForUser) ? savedForUser : next[0]?.id ?? "");
       })
       .catch(() => {
         if (!cancelled) setEvents([]);
@@ -127,9 +125,10 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   const setSelectedEventId = useCallback((eventId: string) => {
     setSelectedEventIdState(eventId);
-    if (eventId) window.localStorage.setItem(STORAGE_KEY, eventId);
-    else window.localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    const storageKey = storageKeyForUser(user?.id);
+    if (eventId) window.localStorage.setItem(storageKey, eventId);
+    else window.localStorage.removeItem(storageKey);
+  }, [user?.id]);
 
   const addEvent = useCallback(
     async (input: EventInput) => {
