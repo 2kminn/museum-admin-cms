@@ -1,5 +1,5 @@
 import React, { useId, useMemo, useState } from "react";
-import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
+import { FileText, ImagePlus, Trash2, UploadCloud } from "lucide-react";
 
 type Props = {
   label: string;
@@ -17,6 +17,14 @@ function bytesToHuman(bytes: number) {
   if (mb < 1024) return `${mb.toFixed(1)}MB`;
   const gb = mb / 1024;
   return `${gb.toFixed(1)}GB`;
+}
+
+function isImageFile(file: File) {
+  return file.type.startsWith("image/") || /\.(avif|gif|jpe?g|png|webp)$/i.test(file.name);
+}
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 }
 
 export function FileDropzone({ label, accept, multiple, value, onChange }: Props) {
@@ -112,11 +120,20 @@ export function FileDropzone({ label, accept, multiple, value, onChange }: Props
               className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
             >
               <div className="h-12 w-12 overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
-                <img src={p.url} alt={p.file.name} className="h-full w-full object-cover" />
+                {isImageFile(p.file) ? (
+                  <img src={p.url} alt={p.file.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-zinc-500 dark:text-zinc-400">
+                    {isPdfFile(p.file) ? <FileText className="h-5 w-5" /> : <UploadCloud className="h-5 w-5" />}
+                  </div>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{p.file.name}</div>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">{bytesToHuman(p.file.size)}</div>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {isPdfFile(p.file) ? "PDF" : isImageFile(p.file) ? "이미지" : "파일"} ·{" "}
+                  {bytesToHuman(p.file.size)}
+                </div>
               </div>
               <button
                 type="button"

@@ -3,7 +3,6 @@ import {
   CheckCircle2,
   CirclePlus,
   Filter,
-  ImageIcon,
   QrCode,
   Save,
   Search,
@@ -16,6 +15,8 @@ import { LanguageTabs, type LanguageKey } from "../components/LanguageTabs";
 import { FileDropzone } from "../components/FileDropzone";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs";
 import { ArtworkQrCard } from "../components/ArtworkQrCard";
+import { ArtworkMediaPreview } from "../components/ArtworkMediaPreview";
+import { CmsNotice, type CmsNoticeState } from "../components/CmsNotice";
 import {
   createEmptyLocalizedText,
   fileToDataUrl,
@@ -40,14 +41,6 @@ function statusLabel(status: ArtworkStatus) {
   return "초안";
 }
 
-function formatCoord(n: number | null) {
-  if (n === null || Number.isNaN(n)) return "-";
-  const abs = Math.abs(n);
-  if (abs >= 1000) return n.toFixed(2);
-  if (abs >= 10) return n.toFixed(3);
-  return n.toFixed(4);
-}
-
 export function LocationsArtworksPage() {
   const { selectedEvent } = useEventContext();
   const eventId = selectedEvent?.id ?? "";
@@ -66,16 +59,16 @@ export function LocationsArtworksPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [localized, setLocalized] = useState<LocalizedText>(() => createEmptyLocalizedText());
-  const [x, setX] = useState<string>("");
-  const [y, setY] = useState<string>("");
-  const [z, setZ] = useState<string>("");
-  const [triggerRadiusMeters, setTriggerRadiusMeters] = useState<number>(10);
   const [status, setStatus] = useState<ArtworkStatus>("draft");
 
   const [artworkImage, setArtworkImage] = useState<File | null>(null);
-  const [markerImages, setMarkerImages] = useState<File[]>([]);
   const [existingThumbnail, setExistingThumbnail] = useState<string | null>(null);
-  const [existingMarkers, setExistingMarkers] = useState<number>(0);
+  const [notice, setNotice] = useState<CmsNoticeState | null>(null);
+
+  const showNotice = (nextNotice: CmsNoticeState) => {
+    setNotice(nextNotice);
+    window.setTimeout(() => setNotice(null), 3500);
+  };
 
   useEffect(() => {
     if (!eventId) return;
@@ -120,15 +113,9 @@ export function LocationsArtworksPage() {
     setActiveLang("ko");
     setEditingId(null);
     setLocalized(createEmptyLocalizedText());
-    setX("");
-    setY("");
-    setZ("");
-    setTriggerRadiusMeters(10);
     setStatus("draft");
     setArtworkImage(null);
-    setMarkerImages([]);
     setExistingThumbnail(null);
-    setExistingMarkers(0);
   };
 
   const startCreate = () => {
@@ -141,15 +128,9 @@ export function LocationsArtworksPage() {
     setEditingId(item.id);
     setActiveLang("ko");
     setLocalized(item.localized);
-    setX(item.spatial.x === null ? "" : String(item.spatial.x));
-    setY(item.spatial.y === null ? "" : String(item.spatial.y));
-    setZ(item.spatial.z === null ? "" : String(item.spatial.z));
-    setTriggerRadiusMeters(item.spatial.triggerRadiusMeters ?? 10);
     setStatus(item.status);
     setArtworkImage(null);
-    setMarkerImages([]);
     setExistingThumbnail(item.media.thumbnailDataUrl);
-    setExistingMarkers(item.media.markerImages?.length ?? 0);
     setTab("form");
   };
 
@@ -169,11 +150,11 @@ export function LocationsArtworksPage() {
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventId) {
-      window.alert("먼저 상단에서 행사를 선택해 주세요.");
+      showNotice({ tone: "error", message: "먼저 상단에서 행사를 선택해 주세요." });
       return;
     }
     if (!localized.ko.title.trim()) {
-      window.alert("작품명(KR)을 입력해 주세요.");
+      showNotice({ tone: "error", message: "작품명(KR)을 입력해 주세요." });
       return;
     }
 
@@ -182,7 +163,10 @@ export function LocationsArtworksPage() {
       const isEditing = Boolean(editingId);
       const existing = isEditing ? artworks.find((a) => a.id === editingId) : undefined;
       if (isEditing && !existing) {
-        window.alert("수정 대상이 목록에서 사라졌습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.");
+        showNotice({
+          tone: "error",
+          message: "수정 대상이 목록에서 사라졌습니다. 목록을 새로고침한 뒤 다시 시도해 주세요.",
+        });
         setTab("list");
         setEditingId(null);
         return;
@@ -192,7 +176,10 @@ export function LocationsArtworksPage() {
       const createdAt = isEditing && existing ? existing.createdAt : nowIso();
 
       const thumbnailDataUrl =
-        artworkImage && artworkImage.type.startsWith("image/")
+        artworkImage &&
+        (artworkImage.type.startsWith("image/") ||
+          artworkImage.type === "application/pdf" ||
+          /\.(avif|gif|jpe?g|pdf|png|webp)$/i.test(artworkImage.name))
           ? await fileToDataUrl(artworkImage)
           : null;
 
@@ -203,23 +190,18 @@ export function LocationsArtworksPage() {
         eventId,
         status,
         localized,
-        spatial: {
-          x: x.trim() === "" ? null : Number(x),
-          y: y.trim() === "" ? null : Number(y),
-          z: z.trim() === "" ? null : Number(z),
-          triggerRadiusMeters,
+        spatial: existing?.spatial ?? {
+          x: null,
+          y: null,
+          z: null,
+          triggerRadiusMeters: 10,
         },
         media: {
           thumbnailDataUrl:
             thumbnailDataUrl ?? (isEditing && existing ? existing.media.thumbnailDataUrl : null),
           artworkImageName:
             artworkImage?.name ?? (isEditing && existing ? existing.media.artworkImageName : null),
-          markerImages:
-            markerImages.length > 0
-              ? markerImages.map((f) => ({ fileName: f.name, size: f.size }))
-              : isEditing && existing
-                ? existing.media.markerImages
-                : null,
+          markerImages: isEditing && existing ? existing.media.markerImages : null,
         },
         createdAt,
         updatedAt: nowIso(),
@@ -242,11 +224,11 @@ export function LocationsArtworksPage() {
       // placeholder for backend integration
       // eslint-disable-next-line no-console
       console.log("[ArtworkManagement] save payload", savedRecord);
-      window.alert("저장 완료");
+      showNotice({ tone: "success", message: "저장 완료" });
       resetForm();
       setTab("list");
     } catch {
-      window.alert("저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요.");
+      showNotice({ tone: "error", message: "저장 중 오류가 발생했습니다. 파일/입력 값을 확인해 주세요." });
     } finally {
       setIsSaving(false);
     }
@@ -264,7 +246,7 @@ export function LocationsArtworksPage() {
 
   const onDelete = (id: string) => {
     if (!eventId) {
-      window.alert("먼저 상단에서 행사를 선택해 주세요.");
+      showNotice({ tone: "error", message: "먼저 상단에서 행사를 선택해 주세요." });
       return;
     }
     const target = artworks.find((a) => a.id === id);
@@ -293,13 +275,14 @@ export function LocationsArtworksPage() {
 
   return (
     <div className="space-y-5">
+      <CmsNotice notice={notice} onClose={() => setNotice(null)} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            장소 및 작품 설정
+            작품 QR 관리
           </h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-            AR 스팟(장소)과 연결 작품/템플릿을 구성합니다.
+            작품 정보와 출력용 QR 코드를 관리합니다.
           </p>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             현재 행사:{" "}
@@ -362,13 +345,12 @@ export function LocationsArtworksPage() {
 
                 <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
                   <div className="overflow-x-auto">
-                    <table className="min-w-[960px] w-full table-fixed text-left text-sm">
+                    <table className="min-w-[780px] w-full table-fixed text-left text-sm">
                       <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
                         <tr>
                           <th className="w-[72px] px-3 py-2">썸네일</th>
                           <th className="px-3 py-2">작품명 (KR)</th>
                           <th className="w-[300px] px-3 py-2">QR</th>
-                          <th className="w-[180px] px-3 py-2">공간 좌표 (X, Y, Z)</th>
                           <th className="w-[120px] px-3 py-2">상태</th>
                           <th className="w-[120px] px-3 py-2 text-right">삭제</th>
                         </tr>
@@ -377,7 +359,7 @@ export function LocationsArtworksPage() {
                         {filtered.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={6}
+                              colSpan={5}
                               className="px-3 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400"
                             >
                               등록된 작품이 없습니다.{" "}
@@ -404,17 +386,11 @@ export function LocationsArtworksPage() {
                             >
                               <td className="px-3 py-2">
                                 <div className="h-10 w-10 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                                  {item.media.thumbnailDataUrl ? (
-                                    <img
-                                      src={item.media.thumbnailDataUrl}
-                                      alt={item.localized.ko.title || "작품 이미지"}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                                      <ImageIcon className="h-4 w-4" />
-                                    </div>
-                                  )}
+                                  <ArtworkMediaPreview
+                                    src={item.media.thumbnailDataUrl}
+                                    title={item.localized.ko.title}
+                                    fileName={item.media.artworkImageName}
+                                  />
                                 </div>
                               </td>
                               <td className="px-3 py-2">
@@ -447,10 +423,6 @@ export function LocationsArtworksPage() {
                                     </span>
                                   )}
                                 </div>
-                              </td>
-                              <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
-                                {formatCoord(item.spatial.x)}, {formatCoord(item.spatial.y)},{" "}
-                                {formatCoord(item.spatial.z)}
                               </td>
                               <td className="px-3 py-2">
                                 <span
@@ -514,7 +486,6 @@ export function LocationsArtworksPage() {
                       {formTitle}
                     </div>
                     <div className="mt-1 text-xs text-zinc-500">
-                      공간 좌표(X/Y/Z) + 반경(Trigger Radius)로 노출 지점을 정의합니다.
                       QR code/qr_url은 백엔드 저장 응답에서 자동 생성됩니다.
                     </div>
                   </div>
@@ -631,89 +602,6 @@ export function LocationsArtworksPage() {
                         </select>
                       </div>
                     </div>
-
-                    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                      <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">공간 좌표</div>
-                      <div className="mt-1 text-xs text-zinc-500">COLMAP 추출 좌표값을 입력합니다.</div>
-
-                      <div className="mt-3 grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-xs font-medium text-zinc-700" htmlFor="colmap-x">
-                            X
-                          </label>
-                          <input
-                            id="colmap-x"
-                            inputMode="decimal"
-                            type="number"
-                            step="any"
-                            value={x}
-                            onChange={(e) => setX(e.target.value)}
-                            className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                            placeholder="0.0"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-zinc-700" htmlFor="colmap-y">
-                            Y
-                          </label>
-                          <input
-                            id="colmap-y"
-                            inputMode="decimal"
-                            type="number"
-                            step="any"
-                            value={y}
-                            onChange={(e) => setY(e.target.value)}
-                            className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                            placeholder="0.0"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-zinc-700" htmlFor="colmap-z">
-                            Z
-                          </label>
-                          <input
-                            id="colmap-z"
-                            inputMode="decimal"
-                            type="number"
-                            step="any"
-                            value={z}
-                            onChange={(e) => setZ(e.target.value)}
-                            className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                            placeholder="0.0"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">인식 반경</div>
-                          <div className="mt-1 text-xs text-zinc-500">좌표 근처 몇 m에서 콘텐츠를 띄울지 설정합니다.</div>
-                        </div>
-                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-semibold text-zinc-900">
-                          {triggerRadiusMeters}m
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <input
-                          type="range"
-                          min={1}
-                          max={50}
-                          step={1}
-                          value={triggerRadiusMeters}
-                          onChange={(e) => setTriggerRadiusMeters(Number(e.target.value))}
-                          className="w-full accent-zinc-900"
-                          aria-label="인식 반경(m)"
-                        />
-                        <div className="mt-2 flex justify-between text-[11px] text-zinc-500">
-                          <span>1m</span>
-                          <span>25m</span>
-                          <span>50m</span>
-                        </div>
-                      </div>
-                    </div>
                   </section>
 
                   <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
@@ -721,63 +609,50 @@ export function LocationsArtworksPage() {
                       <div>
                         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">미디어 업로드</div>
                         <div className="mt-1 text-xs text-zinc-500">
-                          작품 이미지를 업로드합니다. 마커 이미지는 구버전 호환용이며 QR 인식에는 사용되지 않습니다.
+                          작품 이미지 또는 PDF 썸네일을 업로드합니다.
                         </div>
                       </div>
-                      {existingMarkers > 0 ? (
-                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-semibold text-zinc-700">
-                          기존 마커 이미지 {existingMarkers}장
-                        </div>
-                      ) : null}
                     </div>
 
                     {existingThumbnail && !artworkImage ? (
                       <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                        <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                            <img
+                        <div className="flex items-start gap-3">
+                          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+                            <ArtworkMediaPreview
                               src={existingThumbnail}
-                              alt="기존 작품 이미지"
-                              className="h-full w-full object-cover"
+                              title={localized.ko.title}
+                              fileName={editingArtwork?.media.artworkImageName}
                             />
                           </div>
                           <div className="min-w-0">
                             <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                              기존 작품 이미지
+                              등록된 작품 이미지
                             </div>
                             <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                              새 파일을 업로드하면 교체됩니다.
+                              아래에서 새 PNG/JPG/PDF 파일을 선택하면 현재 썸네일을 교체합니다.
                             </div>
+                            {editingArtwork?.media.artworkImageName ? (
+                              <div className="mt-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                                파일: {editingArtwork.media.artworkImageName}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
                     ) : null}
 
-                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    <div className="mt-4 grid gap-4">
                       <div>
-                        <div className="mb-2 text-xs font-medium text-zinc-700">작품 이미지 (고해상도)</div>
+                        <div className="mb-2 text-xs font-medium text-zinc-700">
+                          {existingThumbnail ? "썸네일 수정" : "작품 이미지 등록"}
+                        </div>
                         <FileDropzone
-                          label="이미지를 드래그앤드롭 또는 클릭"
-                          accept="image/*"
+                          label={existingThumbnail ? "썸네일 수정" : "이미지를 드래그앤드롭 또는 클릭"}
+                          accept="image/*,.pdf,application/pdf"
                           multiple={false}
                           value={artworkImage ? [artworkImage] : []}
                           onChange={(files) => setArtworkImage(files[0] ?? null)}
                         />
-                      </div>
-                      <div>
-                        <div className="mb-2 text-xs font-medium text-zinc-700">
-                          마커 이미지 (구버전, 미사용)
-                        </div>
-                        <FileDropzone
-                          label="여러 장 업로드 가능 (권장)"
-                          accept="image/*"
-                          multiple
-                          value={markerImages}
-                          onChange={(files) => setMarkerImages(files)}
-                        />
-                        <div className="mt-2 text-[11px] text-zinc-500">
-                          현재 QR 인식에는 사용하지 않습니다. 백엔드 호환을 위해 기존 메타만 유지합니다.
-                        </div>
                       </div>
                     </div>
                   </section>

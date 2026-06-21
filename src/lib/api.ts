@@ -1,5 +1,10 @@
 import type { AuthRole, AuthUser, MuseumStatus } from "../auth/auth";
-import type { ArtworkRecord, ArtworkStatus, LocalizedText } from "./localArtworksStore";
+import {
+  loadArtworksForEvent,
+  type ArtworkRecord,
+  type ArtworkStatus,
+  type LocalizedText,
+} from "./localArtworksStore";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "https://artar-backend-932907510949.asia-northeast3.run.app";
@@ -412,13 +417,17 @@ async function getPrimaryVenue(eventId: string) {
 }
 
 export async function apiListArtworksForEvent(eventId: string): Promise<ArtworkRecord[]> {
+  const localById = new Map(loadArtworksForEvent(eventId).map((artwork) => [artwork.id, artwork]));
   const venues = await apiListVenues(eventId);
   const nested = await Promise.all(
     venues.map(async (venue) => {
       const body = await request<ApiEnvelope<ApiArtwork[]>>(
         `/api/v1/admin/venues/${venue.id}/artworks`,
       );
-      return unwrapList(body).map((artwork) => mapArtwork(artwork, eventId));
+      return unwrapList(body).map((artwork) => {
+        const mapped = mapArtwork(artwork, eventId);
+        return mergeLocalArtworkMedia(mapped, localById.get(mapped.id));
+      });
     }),
   );
   return nested.flat();
@@ -442,7 +451,7 @@ export async function apiSaveArtworkForEvent(
       method: "PUT",
       body: JSON.stringify(payload),
     });
-    return mapArtwork(body.data, eventId);
+    return mergeLocalArtworkMedia(mapArtwork(body.data, eventId), artwork);
   }
 
   const venue = await getPrimaryVenue(eventId);
@@ -450,7 +459,7 @@ export async function apiSaveArtworkForEvent(
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return mapArtwork(body.data, eventId);
+  return mergeLocalArtworkMedia(mapArtwork(body.data, eventId), artwork);
 }
 
 export async function apiDeleteArtwork(artworkId: string) {
@@ -490,6 +499,19 @@ function mapArtwork(artwork: ApiArtwork, eventId: string): ArtworkRecord {
     },
     createdAt,
     updatedAt: createdAt,
+  };
+}
+
+function mergeLocalArtworkMedia(remote: ArtworkRecord, local?: ArtworkRecord): ArtworkRecord {
+  if (!local?.media.thumbnailDataUrl || remote.media.thumbnailDataUrl) return remote;
+  return {
+    ...remote,
+    media: {
+      ...remote.media,
+      thumbnailDataUrl: local.media.thumbnailDataUrl,
+      artworkImageName: remote.media.artworkImageName ?? local.media.artworkImageName,
+      markerImages: remote.media.markerImages ?? local.media.markerImages,
+    },
   };
 }
 
