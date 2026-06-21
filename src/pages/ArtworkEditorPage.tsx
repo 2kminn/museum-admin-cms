@@ -47,7 +47,7 @@ function saveErrorMessage(error: unknown) {
     return "이미지 업로드 URL을 발급받지 못했습니다. 로그인 상태와 백엔드 응답을 확인해 주세요.";
   }
   if (message.startsWith("STORAGE_UPLOAD_FETCH_FAILED:")) {
-    return "이미지 스토리지 업로드가 브라우저에서 차단됐습니다. 스토리지 CORS 설정을 확인해 주세요.";
+    return `이미지 스토리지 업로드가 브라우저에서 차단됐습니다. ${message.replace("STORAGE_UPLOAD_FETCH_FAILED:", "")}`;
   }
   if (message.startsWith("UPLOAD_FAILED_")) {
     return "이미지 업로드에 실패했습니다. 파일 크기와 네트워크 상태를 확인해 주세요.";

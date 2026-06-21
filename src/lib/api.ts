@@ -450,6 +450,7 @@ export async function apiGetArtwork(eventId: string, artworkId: string): Promise
 
 export async function apiUploadArtworkMedia(file: File) {
   const contentType = normalizeUploadContentType(file);
+  const pageOrigin = window.location.origin;
   let signed: ApiEnvelope<ApiSignedUrl>;
   try {
     signed = await request<ApiEnvelope<ApiSignedUrl>>("/api/v1/admin/upload/signed-url", {
@@ -463,6 +464,7 @@ export async function apiUploadArtworkMedia(file: File) {
     throw new Error(`SIGNED_URL_FAILED:${error instanceof Error ? error.message : "UNKNOWN"}`);
   }
 
+  const uploadHost = getUrlHost(signed.data.upload_url);
   let uploadRes: Response;
   try {
     uploadRes = await fetch(signed.data.upload_url, {
@@ -473,7 +475,11 @@ export async function apiUploadArtworkMedia(file: File) {
       body: file,
     });
   } catch (error) {
-    throw new Error(`STORAGE_UPLOAD_FETCH_FAILED:${error instanceof Error ? error.message : "UNKNOWN"}`);
+    throw new Error(
+      `STORAGE_UPLOAD_FETCH_FAILED:origin=${pageOrigin};host=${uploadHost};detail=${
+        error instanceof Error ? error.message : "UNKNOWN"
+      }`,
+    );
   }
 
   if (!uploadRes.ok) {
@@ -481,6 +487,14 @@ export async function apiUploadArtworkMedia(file: File) {
   }
 
   return signed.data.public_url;
+}
+
+function getUrlHost(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "UNKNOWN";
+  }
 }
 
 export async function apiSaveArtworkForEvent(
@@ -531,6 +545,7 @@ export async function apiDashboardSummary(eventId: string) {
 function mapArtwork(artwork: ApiArtwork, eventId: string): ArtworkRecord {
   const localized = fromApiI18n(artwork.title_i18n, artwork.description_i18n);
   const createdAt = artwork.created_at;
+  const artworkImageUrl = artwork.media_url ?? artwork.marker_image_url ?? null;
 
   return {
     id: artwork.id,
@@ -551,8 +566,8 @@ function mapArtwork(artwork: ApiArtwork, eventId: string): ArtworkRecord {
       triggerRadiusMeters: 10,
     },
     media: {
-      thumbnailDataUrl: artwork.media_url ?? artwork.marker_image_url ?? null,
-      artworkImageName: artwork.media_url ? filenameFromUrl(artwork.media_url) : null,
+      thumbnailDataUrl: artworkImageUrl,
+      artworkImageName: artworkImageUrl ? filenameFromUrl(artworkImageUrl) : null,
       markerImages: artwork.marker_image_url
         ? [{ fileName: filenameFromUrl(artwork.marker_image_url), size: 0 }]
         : null,

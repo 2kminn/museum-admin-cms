@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FileText, ImageIcon } from "lucide-react";
 
 type ArtworkMediaPreviewProps = {
@@ -7,15 +7,13 @@ type ArtworkMediaPreviewProps = {
   fileName?: string | null;
 };
 
-function isImageSrc(src: string) {
-  return src.startsWith("data:image/") || /\.(avif|gif|jpe?g|png|webp)(\?.*)?$/i.test(src);
-}
-
 function isPdfSrc(src: string) {
   return src.startsWith("data:application/pdf") || /\.pdf(\?.*)?$/i.test(src);
 }
 
 export function ArtworkMediaPreview({ src, title, fileName }: ArtworkMediaPreviewProps) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
   if (!src) {
     return (
       <div className="flex h-full w-full items-center justify-center text-zinc-400">
@@ -24,8 +22,15 @@ export function ArtworkMediaPreview({ src, title, fileName }: ArtworkMediaPrevie
     );
   }
 
-  if (isImageSrc(src)) {
-    return <img src={src} alt={title || "작품 이미지"} className="h-full w-full object-cover" />;
+  if (!isPdfSrc(src) && failedSrc !== src) {
+    return (
+      <img
+        src={src}
+        alt={title || "작품 이미지"}
+        className="h-full w-full object-cover"
+        onError={() => setFailedSrc(src)}
+      />
+    );
   }
 
   return (
