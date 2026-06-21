@@ -1,6 +1,7 @@
 import type { LanguageKey } from "../components/LanguageTabs";
 
 export type ArtworkStatus = "draft" | "active";
+export type ArtworkMediaType = "image" | "video" | "audio" | "model3d";
 
 export type LocalizedText = Record<LanguageKey, { title: string; description: string }>;
 
@@ -21,8 +22,13 @@ export type ArtworkRecord = {
   id: string;
   code: number | null;
   qrUrl: string | null;
+  venueId: string | null;
   eventId: string;
   status: ArtworkStatus;
+  artist: string | null;
+  mediaUrl: string | null;
+  mediaType: ArtworkMediaType;
+  sortOrder: number;
   localized: LocalizedText;
   spatial: ArtworkSpatial;
   media: ArtworkMedia;
@@ -59,7 +65,16 @@ export function loadArtworksForEvent(eventId: string): ArtworkRecord[] {
   try {
     const parsed = JSON.parse(raw) as ArtworkRecord[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((a) => a && a.eventId === eventId && typeof a.id === "string");
+    return parsed
+      .filter((a) => a && a.eventId === eventId && typeof a.id === "string")
+      .map((a) => ({
+        ...a,
+        venueId: a.venueId ?? null,
+        artist: a.artist ?? null,
+        mediaUrl: a.mediaUrl ?? a.media?.thumbnailDataUrl ?? null,
+        mediaType: a.mediaType ?? "image",
+        sortOrder: a.sortOrder ?? 0,
+      }));
   } catch {
     return [];
   }

@@ -91,6 +91,14 @@ type ApiArtwork = {
   created_at: string;
 };
 
+type ApiSignedUrl = {
+  upload_url: string;
+  public_url: string;
+  key: string;
+  content_type: string;
+  expires_in_minutes: number;
+};
+
 type ApiStatsSummary = Record<string, unknown>;
 
 function getToken() {
@@ -433,6 +441,38 @@ export async function apiListArtworksForEvent(eventId: string): Promise<ArtworkR
   return nested.flat();
 }
 
+export async function apiGetArtwork(eventId: string, artworkId: string): Promise<ArtworkRecord> {
+  const body = await request<ApiEnvelope<ApiArtwork>>(`/api/v1/admin/artworks/${artworkId}`);
+  const mapped = mapArtwork(body.data, eventId);
+  const local = loadArtworksForEvent(eventId).find((artwork) => artwork.id === artworkId);
+  return mergeLocalArtworkMedia(mapped, local);
+}
+
+export async function apiUploadArtworkMedia(file: File) {
+  const contentType = normalizeUploadContentType(file);
+  const signed = await request<ApiEnvelope<ApiSignedUrl>>("/api/v1/admin/upload/signed-url", {
+    method: "POST",
+    body: JSON.stringify({
+      filename: file.name,
+      content_type: contentType,
+    }),
+  });
+
+  const uploadRes = await fetch(signed.data.upload_url, {
+    method: "PUT",
+    headers: {
+      "content-type": signed.data.content_type,
+    },
+    body: file,
+  });
+
+  if (!uploadRes.ok) {
+    throw new Error(`UPLOAD_FAILED_${uploadRes.status}`);
+  }
+
+  return signed.data.public_url;
+}
+
 export async function apiSaveArtworkForEvent(
   eventId: string,
   artwork: ArtworkRecord,
@@ -441,8 +481,11 @@ export async function apiSaveArtworkForEvent(
   const payload = {
     title_i18n: toApiI18nTitle(artwork.localized),
     description_i18n: toApiI18nDescription(artwork.localized),
-    media_type: "image",
-    sort_order: 0,
+    artist: artwork.artist?.trim() || null,
+    marker_image_url: null,
+    media_url: artwork.mediaUrl || null,
+    media_type: artwork.mediaType,
+    sort_order: artwork.sortOrder,
     is_active: artwork.status === "active",
   };
 
@@ -454,8 +497,8 @@ export async function apiSaveArtworkForEvent(
     return mergeLocalArtworkMedia(mapArtwork(body.data, eventId), artwork);
   }
 
-  const venue = await getPrimaryVenue(eventId);
-  const body = await request<ApiEnvelope<ApiArtwork>>(`/api/v1/admin/venues/${venue.id}/artworks`, {
+  const venueId = artwork.venueId ?? (await getPrimaryVenue(eventId)).id;
+  const body = await request<ApiEnvelope<ApiArtwork>>(`/api/v1/admin/venues/${venueId}/artworks`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -481,8 +524,13 @@ function mapArtwork(artwork: ApiArtwork, eventId: string): ArtworkRecord {
     id: artwork.id,
     code: artwork.code ?? null,
     qrUrl: artwork.qr_url ?? null,
+    venueId: artwork.venue_id,
     eventId,
     status: artwork.is_active === false ? "draft" : "active",
+    artist: artwork.artist ?? null,
+    mediaUrl: artwork.media_url ?? null,
+    mediaType: artwork.media_type ?? "image",
+    sortOrder: artwork.sort_order ?? 0,
     localized,
     spatial: {
       x: null,
@@ -513,6 +561,18 @@ function mergeLocalArtworkMedia(remote: ArtworkRecord, local?: ArtworkRecord): A
       markerImages: remote.media.markerImages ?? local.media.markerImages,
     },
   };
+}
+
+function normalizeUploadContentType(file: File): string {
+  if (file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp" || file.type === "image/gif") {
+    return file.type;
+  }
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) return "image/jpeg";
+  if (lowerName.endsWith(".png")) return "image/png";
+  if (lowerName.endsWith(".webp")) return "image/webp";
+  if (lowerName.endsWith(".gif")) return "image/gif";
+  throw new Error("UNSUPPORTED_UPLOAD_TYPE");
 }
 
 function fromApiI18n(title: I18nField, description?: I18nField): LocalizedText {

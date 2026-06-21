@@ -8,16 +8,23 @@ import { ArtworkMediaPreview } from "../components/ArtworkMediaPreview";
 import { CmsNotice, type CmsNoticeState } from "../components/CmsNotice";
 import {
   createEmptyLocalizedText,
-  fileToDataUrl,
   generateArtworkId,
   loadArtworksForEvent,
   nowIso,
   saveArtworksForEvent,
+  type ArtworkMediaType,
   type ArtworkRecord,
   type ArtworkStatus,
   type LocalizedText,
 } from "../lib/localArtworksStore";
-import { apiListArtworksForEvent, apiSaveArtworkForEvent } from "../lib/api";
+import {
+  apiGetArtwork,
+  apiListArtworksForEvent,
+  apiListVenues,
+  apiSaveArtworkForEvent,
+  apiUploadArtworkMedia,
+  type ApiVenue,
+} from "../lib/api";
 
 type Mode = "create" | "edit";
 
@@ -46,6 +53,12 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
   const [activeLang, setActiveLang] = useState<LanguageKey>("ko");
   const [localized, setLocalized] = useState<LocalizedText>(() => createEmptyLocalizedText());
   const [status, setStatus] = useState<ArtworkStatus>("draft");
+  const [artist, setArtist] = useState("");
+  const [mediaType, setMediaType] = useState<ArtworkMediaType>("image");
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [sortOrder, setSortOrder] = useState("0");
+  const [selectedVenueId, setSelectedVenueId] = useState("");
+  const [venues, setVenues] = useState<ApiVenue[]>([]);
 
   const [artworkImage, setArtworkImage] = useState<File | null>(null);
   const [existingThumbnail, setExistingThumbnail] = useState<string | null>(null);
@@ -59,8 +72,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
   };
 
   useEffect(() => {
-    if (mode !== "edit") return;
-    if (!eventId || !artworkId) return;
+    if (!eventId) return;
     let cancelled = false;
 
     const applyItem = (item: ArtworkRecord | undefined) => {
@@ -69,11 +81,30 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       setActiveLang("ko");
       setLocalized(item.localized);
       setStatus(item.status);
+      setArtist(item.artist ?? "");
+      setMediaType(item.mediaType);
+      setMediaUrl(item.mediaUrl ?? "");
+      setSortOrder(String(item.sortOrder ?? 0));
+      setSelectedVenueId(item.venueId ?? "");
       setExistingThumbnail(item.media.thumbnailDataUrl);
     };
 
-    apiListArtworksForEvent(eventId)
-      .then((loaded) => applyItem(loaded.find((a) => a.id === artworkId)))
+    apiListVenues(eventId)
+      .then((loadedVenues) => {
+        if (cancelled) return;
+        setVenues(loadedVenues);
+        if (mode === "create") setSelectedVenueId((prev) => prev || loadedVenues[0]?.id || "");
+      })
+      .catch(() => {
+        if (!cancelled) setVenues([]);
+      });
+
+    if (mode !== "edit" || !artworkId) return () => {
+      cancelled = true;
+    };
+
+    apiGetArtwork(eventId, artworkId)
+      .then((loaded) => applyItem(loaded))
       .catch(() => {
         const loaded = loadArtworksForEvent(eventId);
         applyItem(loaded.find((a) => a.id === artworkId));
@@ -94,6 +125,10 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       showNotice({ tone: "error", message: "작품명(KR)을 입력해 주세요." });
       return;
     }
+    if (mediaUrl.trim() && !/^https?:\/\/[^\s]+$/.test(mediaUrl.trim())) {
+      showNotice({ tone: "error", message: "미디어 URL은 http:// 또는 https:// 형식이어야 합니다." });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -109,20 +144,20 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
       const id = isEditing ? (artworkId as string) : generateArtworkId();
       const createdAt = isEditing && existing ? existing.createdAt : nowIso();
 
-      const thumbnailDataUrl =
-        artworkImage &&
-        (artworkImage.type.startsWith("image/") ||
-          artworkImage.type === "application/pdf" ||
-          /\.(avif|gif|jpe?g|pdf|png|webp)$/i.test(artworkImage.name))
-          ? await fileToDataUrl(artworkImage)
-          : null;
+      const uploadedMediaUrl = artworkImage ? await apiUploadArtworkMedia(artworkImage) : null;
+      const nextMediaUrl = uploadedMediaUrl ?? (mediaUrl.trim() || null);
 
       const record: ArtworkRecord = {
         id,
         code: existing?.code ?? null,
         qrUrl: existing?.qrUrl ?? null,
+        venueId: isEditing ? (existing?.venueId ?? (selectedVenueId || null)) : selectedVenueId || null,
         eventId,
         status,
+        artist: artist.trim() || null,
+        mediaUrl: nextMediaUrl,
+        mediaType,
+        sortOrder: Math.max(0, Number(sortOrder) || 0),
         localized,
         spatial: existing?.spatial ?? {
           x: null,
@@ -131,7 +166,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
           triggerRadiusMeters: 10,
         },
         media: {
-          thumbnailDataUrl: thumbnailDataUrl ?? (isEditing && existing ? existing.media.thumbnailDataUrl : null),
+          thumbnailDataUrl: nextMediaUrl ?? (isEditing && existing ? existing.media.thumbnailDataUrl : null),
           artworkImageName: artworkImage?.name ?? (isEditing && existing ? existing.media.artworkImageName : null),
           markerImages: isEditing && existing ? existing.media.markerImages : null,
         },
@@ -139,7 +174,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
         updatedAt: nowIso(),
       };
 
-      const savedRecord = await apiSaveArtworkForEvent(eventId, record, isEditing).catch(() => record);
+      const savedRecord = await apiSaveArtworkForEvent(eventId, record, isEditing);
       const next = isEditing
         ? loaded.map((a) => (a.id === id ? savedRecord : a))
         : [savedRecord, ...loaded];
@@ -243,6 +278,19 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
                 placeholder="작품 소개, 운영 안내, 관람 팁 등을 입력하세요."
               />
             </div>
+
+            <div>
+              <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-artist">
+                작가
+              </label>
+              <input
+                id="artwork-artist"
+                value={artist}
+                onChange={(e) => setArtist(e.target.value)}
+                className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                placeholder="예) 홍길동"
+              />
+            </div>
           </div>
         </section>
 
@@ -294,15 +342,93 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
               </select>
             </div>
           </div>
+
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">등록 설정</div>
+            <div className="mt-3 grid gap-3">
+              <div>
+                <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-venue">
+                  장소
+                </label>
+                <select
+                  id="artwork-venue"
+                  value={selectedVenueId}
+                  disabled={mode === "edit"}
+                  onChange={(e) => setSelectedVenueId(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                >
+                  <option value="">기본 장소 자동 선택</option>
+                  {venues.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name_i18n.ko || venue.name_i18n.en || venue.id}
+                    </option>
+                  ))}
+                </select>
+                {mode === "edit" ? (
+                  <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    기존 작품의 장소 변경은 백엔드 수정 API에서 지원하지 않아 비활성화했습니다.
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-media-type">
+                    미디어 타입
+                  </label>
+                  <select
+                    id="artwork-media-type"
+                    value={mediaType}
+                    onChange={(e) => setMediaType(e.target.value as ArtworkMediaType)}
+                    className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  >
+                    <option value="image">이미지</option>
+                    <option value="video">영상</option>
+                    <option value="audio">오디오</option>
+                    <option value="model3d">3D 모델</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-sort-order">
+                    정렬 순서
+                  </label>
+                  <input
+                    id="artwork-sort-order"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                    className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
           <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">미디어 업로드</div>
           <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            작품 이미지 또는 PDF 썸네일을 업로드합니다.
+            이미지는 백엔드 업로드 API로 저장합니다. 영상/오디오/3D는 URL을 입력해 저장합니다.
           </div>
 
           <div className="mt-4 grid gap-4">
+            <div>
+              <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-media-url">
+                미디어 URL
+              </label>
+              <input
+                id="artwork-media-url"
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+                className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                placeholder="https://..."
+              />
+              <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                파일을 업로드하면 업로드된 이미지 URL이 자동 저장됩니다.
+              </div>
+            </div>
             <div>
               <div className="mb-2 text-xs font-medium text-zinc-700">
                 {mode === "edit" && existingThumbnail ? "썸네일 수정" : "작품 이미지 등록"}
@@ -335,7 +461,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
               ) : null}
               <FileDropzone
                 label={mode === "edit" && existingThumbnail ? "썸네일 수정" : "이미지를 드래그앤드롭 또는 클릭"}
-                accept="image/*,.pdf,application/pdf"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 multiple={false}
                 value={artworkImage ? [artworkImage] : []}
                 onChange={(files) => setArtworkImage(files[0] ?? null)}
