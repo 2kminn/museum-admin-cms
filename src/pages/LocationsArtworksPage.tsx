@@ -576,6 +576,53 @@ export function LocationsArtworksPage() {
                     </div>
 
                     <div className="mt-4 grid gap-3">
+                      {existingThumbnail ? (
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                          <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+                            <div className="aspect-square overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                              <ArtworkMediaPreview
+                                src={existingThumbnail}
+                                title={localized.ko.title}
+                                fileName={editingArtwork?.media.artworkImageName}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                                등록된 작품 이미지
+                              </div>
+                              <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                작품 이미지와 설명을 함께 확인하며 수정할 수 있습니다.
+                              </div>
+                              {editingArtwork?.media.artworkImageName ? (
+                                <div className="mt-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                                  파일: {editingArtwork.media.artworkImageName}
+                                </div>
+                              ) : null}
+                              <a
+                                href={existingThumbnail}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex text-[11px] font-semibold text-zinc-900 underline underline-offset-2 dark:text-zinc-100"
+                              >
+                                이미지 URL 열기
+                              </a>
+                              <div className="mt-3">
+                                <div className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                  썸네일 수정
+                                </div>
+                                <FileDropzone
+                                  label="새 이미지를 드래그앤드롭 또는 클릭"
+                                  accept="image/jpeg,image/png,image/webp,image/gif"
+                                  multiple={false}
+                                  value={artworkImage ? [artworkImage] : []}
+                                  onChange={(files) => setArtworkImage(files[0] ?? null)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
                       <div>
                         <label
                           className="text-xs font-medium text-zinc-700"
@@ -593,6 +640,19 @@ export function LocationsArtworksPage() {
                       </div>
 
                       <div>
+                        <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-artist">
+                          작가
+                        </label>
+                        <input
+                          id="artwork-artist"
+                          value={artist}
+                          onChange={(e) => setArtist(e.target.value)}
+                          className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+                          placeholder="예) 홍길동"
+                        />
+                      </div>
+
+                      <div>
                         <label
                           className="text-xs font-medium text-zinc-700"
                           htmlFor={`description-${activeLang}`}
@@ -605,19 +665,6 @@ export function LocationsArtworksPage() {
                           onChange={(e) => setDescription(activeLang, e.target.value)}
                           className="mt-1 min-h-[120px] w-full resize-y rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
                           placeholder="작품 소개, 운영 안내, 관람 팁 등을 입력하세요."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-artist">
-                          작가
-                        </label>
-                        <input
-                          id="artwork-artist"
-                          value={artist}
-                          onChange={(e) => setArtist(e.target.value)}
-                          className="mt-1 h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                          placeholder="예) 홍길동"
                         />
                       </div>
                     </div>
@@ -745,44 +792,6 @@ export function LocationsArtworksPage() {
                       </div>
                     </div>
 
-                    {existingThumbnail && !artworkImage ? (
-                      <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                        <div className="flex items-start gap-3">
-                          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                            <ArtworkMediaPreview
-                              src={existingThumbnail}
-                              title={localized.ko.title}
-                              fileName={editingArtwork?.media.artworkImageName}
-                            />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                              등록된 작품 이미지
-                            </div>
-                            <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                              아래에서 새 JPG/PNG/WebP/GIF 이미지를 선택하면 현재 썸네일을 교체합니다.
-                            </div>
-                            {editingArtwork?.media.artworkImageName ? (
-                              <div className="mt-2 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                                파일: {editingArtwork.media.artworkImageName}
-                              </div>
-                            ) : null}
-                            {existingThumbnail ? (
-                              <a
-                                href={existingThumbnail}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-flex text-[11px] font-semibold text-zinc-900 underline underline-offset-2 dark:text-zinc-100"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                이미지 URL 열기
-                              </a>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-
                     <div className="mt-4 grid gap-4">
                       <div>
                         <label className="text-xs font-medium text-zinc-700" htmlFor="artwork-media-url">
@@ -799,6 +808,7 @@ export function LocationsArtworksPage() {
                           파일을 업로드하면 업로드된 이미지 URL이 자동 저장됩니다.
                         </div>
                       </div>
+                      {!existingThumbnail ? (
                       <div>
                         <div className="mb-2 text-xs font-medium text-zinc-700">
                           {existingThumbnail ? "썸네일 수정" : "작품 이미지 등록"}
@@ -811,6 +821,7 @@ export function LocationsArtworksPage() {
                           onChange={(files) => setArtworkImage(files[0] ?? null)}
                         />
                       </div>
+                      ) : null}
                     </div>
                   </section>
                 </div>
