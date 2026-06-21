@@ -19,6 +19,8 @@ export type ArtworkMedia = {
 
 export type ArtworkRecord = {
   id: string;
+  code: number | null;
+  qrUrl: string | null;
   eventId: string;
   status: ArtworkStatus;
   localized: LocalizedText;
@@ -76,4 +78,3 @@ export async function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
-

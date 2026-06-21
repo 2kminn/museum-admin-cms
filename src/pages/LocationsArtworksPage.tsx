@@ -4,6 +4,7 @@ import {
   CirclePlus,
   Filter,
   ImageIcon,
+  QrCode,
   Save,
   Search,
   Trash2,
@@ -14,6 +15,7 @@ import { useEventContext } from "../context/EventContext";
 import { LanguageTabs, type LanguageKey } from "../components/LanguageTabs";
 import { FileDropzone } from "../components/FileDropzone";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs";
+import { ArtworkQrCard } from "../components/ArtworkQrCard";
 import {
   createEmptyLocalizedText,
   fileToDataUrl,
@@ -196,6 +198,8 @@ export function LocationsArtworksPage() {
 
       const record: ArtworkRecord = {
         id,
+        code: existing?.code ?? null,
+        qrUrl: existing?.qrUrl ?? null,
         eventId,
         status,
         localized,
@@ -252,6 +256,11 @@ export function LocationsArtworksPage() {
     if (editingId) return `작품 수정 (#${editingId})`;
     return "새 작품 등록";
   }, [editingId]);
+
+  const editingArtwork = useMemo(
+    () => artworks.find((artwork) => artwork.id === editingId) ?? null,
+    [artworks, editingId],
+  );
 
   const onDelete = (id: string) => {
     if (!eventId) {
@@ -353,12 +362,13 @@ export function LocationsArtworksPage() {
 
                 <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
                   <div className="overflow-x-auto">
-                    <table className="min-w-[720px] w-full table-fixed text-left text-sm">
+                    <table className="min-w-[960px] w-full table-fixed text-left text-sm">
                       <thead className="bg-zinc-50 text-xs font-semibold text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
                         <tr>
                           <th className="w-[72px] px-3 py-2">썸네일</th>
                           <th className="px-3 py-2">작품명 (KR)</th>
-                          <th className="w-[220px] px-3 py-2">공간 좌표 (X, Y, Z)</th>
+                          <th className="w-[300px] px-3 py-2">QR</th>
+                          <th className="w-[180px] px-3 py-2">공간 좌표 (X, Y, Z)</th>
                           <th className="w-[120px] px-3 py-2">상태</th>
                           <th className="w-[120px] px-3 py-2 text-right">삭제</th>
                         </tr>
@@ -367,7 +377,7 @@ export function LocationsArtworksPage() {
                         {filtered.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={5}
+                              colSpan={6}
                               className="px-3 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400"
                             >
                               등록된 작품이 없습니다.{" "}
@@ -412,7 +422,30 @@ export function LocationsArtworksPage() {
                                   {item.localized.ko.title}
                                 </div>
                                 <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                                  #{item.id}
+                                  ID: {item.id}
+                                </div>
+                                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                  code: {item.code ?? "-"}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2">
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  {item.qrUrl ? (
+                                    <ArtworkQrCard
+                                      title={item.localized.ko.title}
+                                      code={item.code}
+                                      qrUrl={item.qrUrl}
+                                      compact
+                                    />
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-zinc-300 px-2 py-1 text-[11px] text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                                      <QrCode className="h-3.5 w-3.5" />
+                                      저장 후 생성
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-3 py-2 font-mono text-xs text-zinc-700 dark:text-zinc-300">
@@ -482,6 +515,7 @@ export function LocationsArtworksPage() {
                     </div>
                     <div className="mt-1 text-xs text-zinc-500">
                       공간 좌표(X/Y/Z) + 반경(Trigger Radius)로 노출 지점을 정의합니다.
+                      QR code/qr_url은 백엔드 저장 응답에서 자동 생성됩니다.
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -552,6 +586,20 @@ export function LocationsArtworksPage() {
                   </section>
 
                   <section className="space-y-4">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                      <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">QR 코드</div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        qr_url 값을 그대로 렌더링합니다. PC 브라우저에서는 열리지 않는 앱 전용 링크입니다.
+                      </div>
+                      <div className="mt-3">
+                        <ArtworkQrCard
+                          title={localized.ko.title}
+                          code={editingArtwork?.code ?? null}
+                          qrUrl={editingArtwork?.qrUrl ?? null}
+                        />
+                      </div>
+                    </div>
+
                     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                       <div className="flex items-center justify-between gap-2">
                         <div>
@@ -673,12 +721,12 @@ export function LocationsArtworksPage() {
                       <div>
                         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">미디어 업로드</div>
                         <div className="mt-1 text-xs text-zinc-500">
-                          작품 이미지 1장과 COLMAP 학습용 이미지(데이터셋)를 업로드합니다.
+                          작품 이미지를 업로드합니다. 마커 이미지는 구버전 호환용이며 QR 인식에는 사용되지 않습니다.
                         </div>
                       </div>
                       {existingMarkers > 0 ? (
                         <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-semibold text-zinc-700">
-                          기존 학습 이미지 {existingMarkers}장
+                          기존 마커 이미지 {existingMarkers}장
                         </div>
                       ) : null}
                     </div>
@@ -718,7 +766,7 @@ export function LocationsArtworksPage() {
                       </div>
                       <div>
                         <div className="mb-2 text-xs font-medium text-zinc-700">
-                          COLMAP 학습 이미지
+                          마커 이미지 (구버전, 미사용)
                         </div>
                         <FileDropzone
                           label="여러 장 업로드 가능 (권장)"
@@ -728,7 +776,7 @@ export function LocationsArtworksPage() {
                           onChange={(files) => setMarkerImages(files)}
                         />
                         <div className="mt-2 text-[11px] text-zinc-500">
-                          저장 시 로컬에는 파일 메타(이름/크기)만 보관합니다. 실제 업로드는 API 연동 시 `multipart/form-data`로 전송하세요.
+                          현재 QR 인식에는 사용하지 않습니다. 백엔드 호환을 위해 기존 메타만 유지합니다.
                         </div>
                       </div>
                     </div>

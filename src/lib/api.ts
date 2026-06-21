@@ -72,6 +72,8 @@ export type ApiVenue = {
 
 type ApiArtwork = {
   id: string;
+  code?: number | null;
+  qr_url?: string | null;
   venue_id: string;
   title_i18n: I18nField;
   description_i18n?: I18nField;
@@ -468,6 +470,8 @@ function mapArtwork(artwork: ApiArtwork, eventId: string): ArtworkRecord {
 
   return {
     id: artwork.id,
+    code: artwork.code ?? null,
+    qrUrl: artwork.qr_url ?? null,
     eventId,
     status: artwork.is_active === false ? "draft" : "active",
     localized,

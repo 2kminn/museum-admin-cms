@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useEventContext } from "../context/EventContext";
 import { LanguageTabs, type LanguageKey } from "../components/LanguageTabs";
 import { FileDropzone } from "../components/FileDropzone";
+import { ArtworkQrCard } from "../components/ArtworkQrCard";
 import {
   createEmptyLocalizedText,
   fileToDataUrl,
@@ -41,6 +42,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
   const [markerImages, setMarkerImages] = useState<File[]>([]);
   const [existingThumbnail, setExistingThumbnail] = useState<string | null>(null);
   const [existingMarkers, setExistingMarkers] = useState<number>(0);
+  const [currentArtwork, setCurrentArtwork] = useState<ArtworkRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
 
     const applyItem = (item: ArtworkRecord | undefined) => {
       if (!item || cancelled) return;
+      setCurrentArtwork(item);
       setActiveLang("ko");
       setLocalized(item.localized);
       setX(item.spatial.x === null ? "" : String(item.spatial.x));
@@ -104,6 +107,8 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
 
       const record: ArtworkRecord = {
         id,
+        code: existing?.code ?? null,
+        qrUrl: existing?.qrUrl ?? null,
         eventId,
         status: isEditing && existing ? existing.status : "draft",
         localized,
@@ -170,7 +175,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
             </p>
           ) : null}
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            QR 대신 COLMAP 기반 3D 좌표 인식(X/Y/Z)과 반경(Trigger Radius)로 노출 지점을 정의합니다.
+            QR 식별값(code)은 백엔드가 자동 채번하며, CMS는 응답의 qr_url을 그대로 QR로 출력합니다.
           </p>
         </div>
 
@@ -234,6 +239,20 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
         </section>
 
         <section className="space-y-4">
+          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">QR 코드</div>
+            <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              앱 전용 딥링크라 PC 브라우저에서는 열리지 않습니다.
+            </div>
+            <div className="mt-3">
+              <ArtworkQrCard
+                title={localized.ko.title}
+                code={currentArtwork?.code ?? null}
+                qrUrl={currentArtwork?.qrUrl ?? null}
+              />
+            </div>
+          </div>
+
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
               공간 좌표 (Spatial Data)
@@ -327,7 +346,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
         <section className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:col-span-2">
           <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">미디어 업로드</div>
           <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            작품 이미지 1장과 AR 마커 학습용 이미지(데이터셋)를 업로드합니다.
+            작품 이미지를 업로드합니다. 마커 이미지는 구버전 호환용이며 QR 인식에는 사용되지 않습니다.
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -352,7 +371,7 @@ export function ArtworkEditorPage({ mode }: { mode: Mode }) {
               />
             </div>
             <div>
-              <div className="mb-2 text-xs font-medium text-zinc-700">AR 마커용 이미지 (학습 데이터셋)</div>
+              <div className="mb-2 text-xs font-medium text-zinc-700">마커 이미지 (구버전, 미사용)</div>
               {mode === "edit" && existingMarkers > 0 ? (
                 <div className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
                   기존 마커 이미지 {existingMarkers}장
