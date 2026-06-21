@@ -36,7 +36,9 @@ export function ArtworkMediaPreview({ src, title, fileName }: ArtworkMediaPrevie
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center text-zinc-500 dark:text-zinc-400">
       {isPdfSrc(src) ? <FileText className="h-5 w-5" /> : <ImageIcon className="h-5 w-5" />}
-      {fileName ? <span className="max-w-full truncate text-[10px]">{fileName}</span> : null}
+      <span className="max-w-full truncate text-[10px]">
+        {failedSrc === src ? "로드 실패" : fileName}
+      </span>
     </div>
   );
 }

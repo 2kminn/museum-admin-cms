@@ -765,6 +765,17 @@ export function LocationsArtworksPage() {
                                 파일: {editingArtwork.media.artworkImageName}
                               </div>
                             ) : null}
+                            {existingThumbnail ? (
+                              <a
+                                href={existingThumbnail}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex text-[11px] font-semibold text-zinc-900 underline underline-offset-2 dark:text-zinc-100"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                이미지 URL 열기
+                              </a>
+                            ) : null}
                           </div>
                         </div>
                       </div>
