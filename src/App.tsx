@@ -51,7 +51,8 @@ export function App() {
               }
             >
               <Route index element={<DashboardPage />} />
-              <Route path="events" element={<EventManagementPage />} />
+              <Route path="places" element={<EventManagementPage />} />
+              <Route path="events" element={<Navigate to="/cms/places" replace />} />
               <Route path="locations" element={<LocationsArtworksPage />} />
               <Route path="artworks/new" element={<ArtworkEditorPage mode="create" />} />
               <Route path="artworks/:artworkId/edit" element={<ArtworkEditorPage mode="edit" />} />

@@ -1,4 +1,4 @@
-import { CalendarDays, LayoutDashboard, MapPinned } from "lucide-react";
+import { Building2, LayoutDashboard, MapPinned } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 type Props = {
@@ -7,7 +7,7 @@ type Props = {
 
 const navItems = [
   { to: "/cms", end: true, label: "대시보드", icon: LayoutDashboard },
-  { to: "/cms/events", label: "행사 관리", icon: CalendarDays },
+  { to: "/cms/places", label: "장소 관리", icon: Building2 },
   { to: "/cms/locations", label: "작품 설정", icon: MapPinned },
 ] as const;
 

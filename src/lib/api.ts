@@ -7,7 +7,7 @@ import {
 } from "./localArtworksStore";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "https://artar-backend-932907510949.asia-northeast3.run.app";
+  import.meta.env.VITE_API_BASE_URL ?? "https://artar-backend-ychpjp73fa-du.a.run.app";
 
 const TOKEN_KEY = "artar_admin:api_access_token";
 const USER_KEY = "artar_admin:api_user";
@@ -100,6 +100,33 @@ type ApiSignedUrl = {
 };
 
 type ApiStatsSummary = Record<string, unknown>;
+
+export type ApiPlace = {
+  id: number;
+  title: string;
+  category: string;
+  location: string;
+  hours: string | null;
+  fee: string | null;
+  phone: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type ApiPlaceInput = {
+  title: string;
+  category: string;
+  location: string;
+  hours?: string | null;
+  fee?: string | null;
+  phone?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+};
 
 function getToken() {
   return window.localStorage.getItem(TOKEN_KEY);
@@ -379,6 +406,56 @@ export async function apiDeleteEvent(eventId: string) {
   await request<void>(`/api/v1/admin/events/${eventId}`, { method: "DELETE" });
 }
 
+function cleanOptionalText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function toApiPlacePayload(input: ApiPlaceInput) {
+  return {
+    title: input.title.trim(),
+    category: input.category.trim(),
+    location: input.location.trim(),
+    hours: cleanOptionalText(input.hours),
+    fee: cleanOptionalText(input.fee),
+    phone: cleanOptionalText(input.phone),
+    description: cleanOptionalText(input.description),
+    imageUrl: cleanOptionalText(input.imageUrl),
+    isActive: input.isActive ?? true,
+    sortOrder: Number.isFinite(input.sortOrder) ? input.sortOrder : 0,
+  };
+}
+
+export async function apiListPlaces() {
+  const body = await request<ApiEnvelope<ApiPlace[]>>("/api/v1/admin/places");
+  return unwrapList(body);
+}
+
+export async function apiCreatePlace(input: ApiPlaceInput) {
+  const body = await request<ApiEnvelope<ApiPlace>>("/api/v1/admin/places", {
+    method: "POST",
+    body: JSON.stringify(toApiPlacePayload(input)),
+  });
+  return body.data;
+}
+
+export async function apiGetPlace(placeId: number | string) {
+  const body = await request<ApiEnvelope<ApiPlace>>(`/api/v1/admin/places/${placeId}`);
+  return body.data;
+}
+
+export async function apiUpdatePlace(placeId: number | string, input: ApiPlaceInput) {
+  const body = await request<ApiEnvelope<ApiPlace>>(`/api/v1/admin/places/${placeId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiPlacePayload(input)),
+  });
+  return body.data;
+}
+
+export async function apiDeletePlace(placeId: number | string) {
+  await request<void>(`/api/v1/admin/places/${placeId}`, { method: "DELETE" });
+}
+
 export async function apiListVenues(eventId: string) {
   const body = await request<ApiEnvelope<ApiVenue[]>>(`/api/v1/admin/events/${eventId}/venues`);
   return unwrapList(body);
@@ -448,7 +525,7 @@ export async function apiGetArtwork(eventId: string, artworkId: string): Promise
   return mergeLocalArtworkMedia(mapped, local);
 }
 
-export async function apiUploadArtworkMedia(file: File) {
+export async function apiUploadPublicImage(file: File) {
   const contentType = normalizeUploadContentType(file);
   const pageOrigin = window.location.origin;
   let signed: ApiEnvelope<ApiSignedUrl>;
@@ -487,6 +564,10 @@ export async function apiUploadArtworkMedia(file: File) {
   }
 
   return signed.data.public_url;
+}
+
+export async function apiUploadArtworkMedia(file: File) {
+  return apiUploadPublicImage(file);
 }
 
 function getUrlHost(url: string) {
